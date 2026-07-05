@@ -10,6 +10,44 @@ private struct TagPickerItem: Identifiable {
     let id: UUID
 }
 
+private enum RoutineConfirm: Identifiable {
+    case deleteTag(ExerciseTag)
+    case removeExercise(Exercise)
+    case deleteExercise(Exercise)
+
+    var id: String {
+        switch self {
+        case .deleteTag(let tag): return "tag-\(tag.id.uuidString)"
+        case .removeExercise(let exercise): return "remove-\(exercise.id.uuidString)"
+        case .deleteExercise(let exercise): return "delete-\(exercise.id.uuidString)"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .deleteTag(let tag): return "Delete tag \"\(tag.name)\"?"
+        case .removeExercise(let exercise): return "Remove \"\(exercise.name)\"?"
+        case .deleteExercise(let exercise): return "Delete \"\(exercise.name)\"?"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .deleteTag: return "Exercises will move to General."
+        case .removeExercise: return "It will be removed from your routine."
+        case .deleteExercise: return "History is kept, but it won't appear in your routine."
+        }
+    }
+
+    var actionTitle: String {
+        switch self {
+        case .deleteTag: return "Delete Tag"
+        case .removeExercise: return "Remove"
+        case .deleteExercise: return "Delete Exercise"
+        }
+    }
+}
+
 struct RoutineEditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -18,9 +56,7 @@ struct RoutineEditorView: View {
 
     @State private var newTagName = ""
     @State private var addExerciseTag: TagPickerItem?
-    @State private var tagToDelete: ExerciseTag?
-    @State private var exerciseToRemove: Exercise?
-    @State private var exerciseToDelete: Exercise?
+    @State private var pendingConfirm: RoutineConfirm?
     @FocusState private var newTagFocused: Bool
 
     private var sortedTags: [ExerciseTag] { RoutineCatalog.sortedTags(tags) }
@@ -58,57 +94,20 @@ struct RoutineEditorView: View {
                 AddExerciseToTagSheet(tag: tag)
             }
         }
-        .confirmationDialog(
-            "Delete tag \"\(tagToDelete?.name ?? "")\"?",
+        .alert(
+            pendingConfirm?.title ?? "",
             isPresented: Binding(
-                get: { tagToDelete != nil },
-                set: { if !$0 { tagToDelete = nil } }
+                get: { pendingConfirm != nil },
+                set: { if !$0 { pendingConfirm = nil } }
             ),
-            titleVisibility: .visible
-        ) {
-            Button("Delete Tag", role: .destructive) {
-                if let tag = tagToDelete {
-                    RoutineCatalog.deleteTag(tag, context: modelContext)
-                }
-                tagToDelete = nil
+            presenting: pendingConfirm
+        ) { confirm in
+            Button(confirm.actionTitle, role: .destructive) {
+                performConfirm(confirm)
             }
-            Button("Cancel", role: .cancel) { tagToDelete = nil }
-        } message: {
-            Text("Exercises move to General.")
-        }
-        .confirmationDialog(
-            "Remove \"\(exerciseToRemove?.name ?? "")\" from routine?",
-            isPresented: Binding(
-                get: { exerciseToRemove != nil },
-                set: { if !$0 { exerciseToRemove = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Remove", role: .destructive) {
-                if let exercise = exerciseToRemove {
-                    RoutineCatalog.removeFromRoutine(exercise, context: modelContext)
-                }
-                exerciseToRemove = nil
-            }
-            Button("Cancel", role: .cancel) { exerciseToRemove = nil }
-        }
-        .confirmationDialog(
-            "Delete \"\(exerciseToDelete?.name ?? "")\" permanently?",
-            isPresented: Binding(
-                get: { exerciseToDelete != nil },
-                set: { if !$0 { exerciseToDelete = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Delete Exercise", role: .destructive) {
-                if let exercise = exerciseToDelete {
-                    RoutineCatalog.hideExercise(exercise, context: modelContext)
-                }
-                exerciseToDelete = nil
-            }
-            Button("Cancel", role: .cancel) { exerciseToDelete = nil }
-        } message: {
-            Text("History is kept, but it won't appear in your routine.")
+            Button("Cancel", role: .cancel) {}
+        } message: { confirm in
+            Text(confirm.message)
         }
         .onAppear {
             RoutineCatalog.ensureGeneralTag(context: modelContext)
@@ -153,7 +152,7 @@ struct RoutineEditorView: View {
                 Spacer()
                 if tag.name != RoutineCatalog.generalTagName {
                     Button {
-                        tagToDelete = tag
+                        pendingConfirm = .deleteTag(tag)
                     } label: {
                         Image(systemName: "trash")
                             .font(.caption)
@@ -219,7 +218,7 @@ struct RoutineEditorView: View {
             }
 
             Button {
-                exerciseToRemove = exercise
+                pendingConfirm = .removeExercise(exercise)
             } label: {
                 Image(systemName: "minus.circle.fill")
                     .foregroundStyle(.orange.opacity(0.9))
@@ -229,11 +228,11 @@ struct RoutineEditorView: View {
         .padding(.vertical, 4)
         .contextMenu {
             Button("Remove from routine", role: .destructive) {
-                exerciseToRemove = exercise
+                pendingConfirm = .removeExercise(exercise)
             }
             if exercise.isCustom {
                 Button("Delete exercise", role: .destructive) {
-                    exerciseToDelete = exercise
+                    pendingConfirm = .deleteExercise(exercise)
                 }
             }
             if sortedTags.count > 1 {
@@ -245,6 +244,17 @@ struct RoutineEditorView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func performConfirm(_ confirm: RoutineConfirm) {
+        switch confirm {
+        case .deleteTag(let tag):
+            RoutineCatalog.deleteTag(tag, context: modelContext)
+        case .removeExercise(let exercise):
+            RoutineCatalog.removeFromRoutine(exercise, context: modelContext)
+        case .deleteExercise(let exercise):
+            RoutineCatalog.hideExercise(exercise, context: modelContext)
         }
     }
 

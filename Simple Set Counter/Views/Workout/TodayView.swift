@@ -105,9 +105,11 @@ struct TodayView: View {
                     suggestedReps: suggestedReps(for: exercise)
                 )
             }
-            .confirmationDialog("Finish this workout?", isPresented: $showFinishConfirm, titleVisibility: .visible) {
+            .alert("Finish this workout?", isPresented: $showFinishConfirm) {
                 Button("Finish") { finishWorkout() }
                 Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Your sets will be saved to History.")
             }
             .onAppear {
                 RoutineCatalog.ensureGeneralTag(context: modelContext)

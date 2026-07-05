@@ -77,13 +77,15 @@ struct WorkoutDetailView: View {
         .navigationTitle("Workout")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
-        .confirmationDialog("Delete this workout?", isPresented: $showDeleteConfirm, titleVisibility: .visible) {
+        .alert("Delete this workout?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
                 modelContext.delete(session)
                 try? modelContext.save()
                 dismiss()
             }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone.")
         }
     }
 }

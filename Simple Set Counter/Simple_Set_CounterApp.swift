@@ -2,16 +2,18 @@
 //  Simple_Set_CounterApp.swift
 //  Simple Set Counter
 //
-//  Created by Bhushan Patil on 05/07/26.
-//
 
 import SwiftUI
+import SwiftData
 
 @main
 struct Simple_Set_CounterApp: App {
+    private let modelContainer = ModelContainerSetup.makeContainer()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
         }
+        .modelContainer(modelContainer)
     }
 }

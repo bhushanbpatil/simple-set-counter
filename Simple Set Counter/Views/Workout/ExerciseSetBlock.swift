@@ -12,6 +12,7 @@ struct ExerciseSetBlock: View {
     let exercise: Exercise
     let session: WorkoutSession?
     let onAddSet: () -> Void
+    var onSelect: (() -> Void)? = nil
 
     @State private var priorSet: LoggedSet?
 
@@ -95,6 +96,10 @@ struct ExerciseSetBlock: View {
         .padding(16)
         .background(AppTheme.card)
         .clipShape(RoundedRectangle(cornerRadius: 14))
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture {
+            onSelect?()
+        }
         .task(id: refreshToken) {
             priorSet = ProgressCalculator.fetchLastSet(for: exercise, before: session, context: modelContext)
         }

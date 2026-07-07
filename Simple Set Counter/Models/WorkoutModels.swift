@@ -55,9 +55,12 @@ final class ExerciseTag {
 
     var visibleExercises: [Exercise] {
         memberships
+            .sorted { lhs, rhs in
+                if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
+                return (lhs.exercise?.name ?? "") < (rhs.exercise?.name ?? "")
+            }
             .compactMap(\.exercise)
             .filter { !$0.isHidden }
-            .sorted { $0.name < $1.name }
     }
 }
 
@@ -83,6 +86,12 @@ final class WorkoutSession {
     var note: String?
     /// Optional so existing saved workouts migrate without a default-value error.
     var isQuickLog: Bool?
+    /// Active tag for today's exercise queue (UUID string).
+    var flowTagID: String?
+    /// Currently highlighted exercise (UUID string).
+    var currentExerciseIDString: String?
+    /// Comma-separated exercise UUIDs for today's queue order.
+    var queueOrder: String?
 
     @Relationship(deleteRule: .cascade, inverse: \LoggedSet.session)
     var sets: [LoggedSet]

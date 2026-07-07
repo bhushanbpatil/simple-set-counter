@@ -67,7 +67,7 @@ struct RoutineEditorView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                Text("General is the default tag. Use the folder button to move exercises between tags.")
+                Text("General is the default tag. Use ↑↓ to set exercise order, and the folder button to move between tags.")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -111,6 +111,9 @@ struct RoutineEditorView: View {
         }
         .onAppear {
             RoutineCatalog.ensureGeneralTag(context: modelContext)
+            for tag in tags {
+                RoutineCatalog.normalizeMembershipSortOrders(for: tag, context: modelContext)
+            }
         }
     }
 
@@ -167,8 +170,8 @@ struct RoutineEditorView: View {
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.secondaryText)
             } else {
-                ForEach(tag.visibleExercises) { exercise in
-                    exerciseRow(exercise, in: tag)
+                ForEach(Array(tag.visibleExercises.enumerated()), id: \.element.id) { index, exercise in
+                    exerciseRow(exercise, at: index, in: tag)
 
                     if exercise.id != tag.visibleExercises.last?.id {
                         Divider().overlay(Color.white.opacity(0.06))
@@ -189,8 +192,31 @@ struct RoutineEditorView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
-    private func exerciseRow(_ exercise: Exercise, in tag: ExerciseTag) -> some View {
-        HStack {
+    private func exerciseRow(_ exercise: Exercise, at index: Int, in tag: ExerciseTag) -> some View {
+        let exercises = tag.visibleExercises
+        return HStack {
+            VStack(spacing: 4) {
+                Button {
+                    RoutineCatalog.moveExercise(exercise, in: tag, direction: .up, context: modelContext)
+                } label: {
+                    Image(systemName: "chevron.up")
+                        .font(.caption2.bold())
+                }
+                .disabled(index == 0)
+                .opacity(index == 0 ? 0.25 : 1)
+
+                Button {
+                    RoutineCatalog.moveExercise(exercise, in: tag, direction: .down, context: modelContext)
+                } label: {
+                    Image(systemName: "chevron.down")
+                        .font(.caption2.bold())
+                }
+                .disabled(index >= exercises.count - 1)
+                .opacity(index >= exercises.count - 1 ? 0.25 : 1)
+            }
+            .foregroundStyle(AppTheme.accent)
+            .frame(width: 28)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name)
                     .font(.subheadline.weight(.semibold))

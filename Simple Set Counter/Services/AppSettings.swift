@@ -33,6 +33,7 @@ enum AppSettings {
     private static let smartIncreaseKey = "smartIncreaseEnabled"
     private static let smartIncreaseWeightsKey = "smartIncreaseWeights"
     private static let smartIncreaseRepsKey = "smartIncreaseReps"
+    private static let lastUsedTagKey = "lastUsedTagID"
 
     /// A set must exceed this many reps to qualify for smart increase.
     static let smartIncreaseRepThreshold = 12
@@ -83,6 +84,20 @@ enum AppSettings {
             ? String(format: "%.0f", value)
             : String(format: "%.1f", value)
         return "\(formatted) \(weightUnit.label)"
+    }
+
+    static var lastUsedTagID: UUID? {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: lastUsedTagKey) else { return nil }
+            return UUID(uuidString: raw)
+        }
+        set {
+            if let newValue {
+                UserDefaults.standard.set(newValue.uuidString, forKey: lastUsedTagKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: lastUsedTagKey)
+            }
+        }
     }
 
     static var smartIncreaseEnabled: Bool {

@@ -34,6 +34,48 @@ enum RoutineCatalog {
         }
     }
 
+    static func orderedMemberships(in tag: ExerciseTag) -> [TaggedExercise] {
+        tag.memberships.sorted { lhs, rhs in
+            if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
+            return (lhs.exercise?.name ?? "") < (rhs.exercise?.name ?? "")
+        }
+    }
+
+    static func orderedExercises(in tag: ExerciseTag) -> [Exercise] {
+        orderedMemberships(in: tag)
+            .compactMap(\.exercise)
+            .filter { !$0.isHidden }
+    }
+
+    @MainActor
+    static func normalizeMembershipSortOrders(for tag: ExerciseTag, context: ModelContext) {
+        let ordered = orderedMemberships(in: tag)
+        for (index, membership) in ordered.enumerated() {
+            membership.sortOrder = index
+        }
+        try? context.save()
+    }
+
+    enum MoveDirection {
+        case up
+        case down
+    }
+
+    @MainActor
+    static func moveExercise(_ exercise: Exercise, in tag: ExerciseTag, direction: MoveDirection, context: ModelContext) {
+        var ordered = orderedMemberships(in: tag)
+        guard let index = ordered.firstIndex(where: { $0.exercise?.id == exercise.id }) else { return }
+
+        let targetIndex = direction == .up ? index - 1 : index + 1
+        guard ordered.indices.contains(targetIndex) else { return }
+
+        ordered.swapAt(index, targetIndex)
+        for (idx, membership) in ordered.enumerated() {
+            membership.sortOrder = idx
+        }
+        try? context.save()
+    }
+
     @MainActor
     static func addExercise(_ exercise: Exercise, to tag: ExerciseTag, context: ModelContext) {
         if tag.memberships.contains(where: { $0.exercise?.id == exercise.id }) { return }

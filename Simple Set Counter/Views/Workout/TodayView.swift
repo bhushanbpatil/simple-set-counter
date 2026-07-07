@@ -20,9 +20,9 @@ struct TodayView: View {
     @State private var showFinishConfirm = false
 
     private var activeSession: WorkoutSession? { activeSessions.first }
-    private var sortedTags: [ExerciseTag] { RoutineCatalog.sortedTags(tags) }
+    private var displayTags: [ExerciseTag] { WorkoutFlow.tagsForToday(tags, session: activeSession) }
     private var routineExerciseCount: Int {
-        sortedTags.reduce(0) { $0 + $1.visibleExercises.count }
+        displayTags.reduce(0) { $0 + $1.visibleExercises.count }
     }
 
     var body: some View {
@@ -31,16 +31,26 @@ struct TodayView: View {
                 VStack(spacing: 16) {
                     headerCard
 
+                    if let session = activeSession,
+                       let current = WorkoutFlow.currentExercise(in: session, tags: tags) {
+                        nowCard(session: session, exercise: current)
+                    }
+
                     if routineExerciseCount == 0 {
                         emptyRoutineCard
                     } else {
-                        ForEach(sortedTags) { tag in
+                        ForEach(displayTags) { tag in
                             if !tag.visibleExercises.isEmpty {
-                                TodayTagSection(tag: tag) { exercise in
+                                TodayTagSection(
+                                    tag: tag,
+                                    session: activeSession,
+                                    isActiveTag: activeSession.flatMap { WorkoutFlow.activeTagID(in: $0) } == tag.id
+                                ) { exercise in
                                     ExerciseSetBlock(
                                         exercise: exercise,
                                         session: activeSession,
-                                        onAddSet: { beginAddingSet(for: exercise) }
+                                        onAddSet: { beginAddingSet(for: exercise, in: tag) },
+                                        onSelect: { startExercise(exercise, in: tag) }
                                     )
                                 }
                             }
@@ -114,8 +124,114 @@ struct TodayView: View {
             .onAppear {
                 RoutineCatalog.ensureGeneralTag(context: modelContext)
                 RoutineCatalog.finishStaleSessions(activeSessions, context: modelContext)
+                for tag in tags {
+                    RoutineCatalog.normalizeMembershipSortOrders(for: tag, context: modelContext)
+                }
             }
         }
+    }
+
+    private func nowCard(session: WorkoutSession, exercise: Exercise) -> some View {
+        let loggedSets = WorkoutFlow.sets(for: exercise, in: session)
+        let nextName = WorkoutFlow.nextExerciseName(in: session, tags: tags)
+        let queueCount = WorkoutFlow.queueIDs(in: session).count
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("NOW")
+                    .font(.caption.bold())
+                    .foregroundStyle(AppTheme.accent)
+                if let tag = WorkoutFlow.currentTag(in: session, tags: tags) {
+                    Text("· \(tag.name)")
+                        .font(.caption.bold())
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+                Spacer()
+                if !loggedSets.isEmpty {
+                    Text("\(loggedSets.count) set\(loggedSets.count == 1 ? "" : "s")")
+                        .font(.caption.bold())
+                        .foregroundStyle(AppTheme.accent)
+                }
+            }
+
+            Text(exercise.name)
+                .font(.title2.weight(.bold))
+
+            if loggedSets.isEmpty {
+                Text("No sets logged yet")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.secondaryText)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(loggedSets.enumerated()), id: \.element.id) { index, set in
+                        HStack {
+                            Text("Set \(index + 1)")
+                                .foregroundStyle(AppTheme.secondaryText)
+                                .frame(width: 48, alignment: .leading)
+                            Text(set.isBodyweight ? "BW" : AppSettings.formatWeight(set.weight))
+                            Text("×")
+                                .foregroundStyle(AppTheme.secondaryText)
+                            Text("\(set.reps) reps")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                    }
+                }
+            }
+
+            if let nextName, queueCount > 1 {
+                Text("Next: \(nextName)")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    beginAddingSet(for: exercise, in: WorkoutFlow.currentTag(in: session, tags: tags))
+                } label: {
+                    Label("Log set", systemImage: "plus")
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(AppTheme.accent.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+
+                if queueCount > 1 {
+                    Button {
+                        WorkoutFlow.advanceToNext(in: session, tags: tags, context: modelContext)
+                    } label: {
+                        Text("Next")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(AppTheme.accent.opacity(0.35))
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    }
+                }
+            }
+            .foregroundStyle(.white)
+
+            if queueCount > 1 {
+                Button {
+                    WorkoutFlow.skipCurrentToBack(in: session, context: modelContext)
+                } label: {
+                    Text("Skip to back")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.white.opacity(0.06))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+                .foregroundStyle(AppTheme.secondaryText)
+            }
+        }
+        .padding(16)
+        .background(AppTheme.card)
+        .overlay(
+            RoundedRectangle(cornerRadius: 14)
+                .stroke(AppTheme.accent.opacity(0.55), lineWidth: 1.5)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private var headerCard: some View {
@@ -165,8 +281,26 @@ struct TodayView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
-    private func beginAddingSet(for exercise: Exercise) {
-        _ = sessionForLogging()
+    private func startExercise(_ exercise: Exercise, in tag: ExerciseTag) {
+        let session = sessionForLogging()
+        WorkoutFlow.startExercise(exercise, in: tag, session: session, context: modelContext)
+    }
+
+    private func beginAddingSet(for exercise: Exercise, in tag: ExerciseTag?) {
+        let session = sessionForLogging()
+        let resolvedTag = tag ?? WorkoutFlow.tag(containing: exercise, in: tags)
+        guard let resolvedTag else {
+            addingExercise = exercise
+            return
+        }
+
+        if WorkoutFlow.currentExerciseID(in: session) == exercise.id,
+           WorkoutFlow.activeTagID(in: session) == resolvedTag.id {
+            // Already on this exercise — log another set without reshuffling the queue.
+            WorkoutFlow.setCurrentExercise(exercise, in: resolvedTag, session: session, context: modelContext)
+        } else {
+            WorkoutFlow.startExercise(exercise, in: resolvedTag, session: session, context: modelContext)
+        }
         addingExercise = exercise
     }
 
@@ -210,6 +344,7 @@ struct TodayView: View {
     private func finishWorkout() {
         guard let session = activeSession else { return }
         AppSettings.applySmartIncrease(after: session)
+        WorkoutFlow.clearFlow(in: session)
         session.endedAt = .now
         try? modelContext.save()
     }
@@ -231,14 +366,27 @@ private struct WorkoutElapsedLabel: View {
 
 struct TodayTagSection: View {
     let tag: ExerciseTag
+    let session: WorkoutSession?
+    let isActiveTag: Bool
     let exerciseContent: (Exercise) -> ExerciseSetBlock
 
     @State private var isCollapsed: Bool
 
-    init(tag: ExerciseTag, @ViewBuilder exerciseContent: @escaping (Exercise) -> ExerciseSetBlock) {
+    init(
+        tag: ExerciseTag,
+        session: WorkoutSession?,
+        isActiveTag: Bool,
+        @ViewBuilder exerciseContent: @escaping (Exercise) -> ExerciseSetBlock
+    ) {
         self.tag = tag
+        self.session = session
+        self.isActiveTag = isActiveTag
         self.exerciseContent = exerciseContent
-        _isCollapsed = State(initialValue: AppSettings.isTagCollapsed(tag.id))
+        _isCollapsed = State(initialValue: AppSettings.isTagCollapsed(tag.id) && !isActiveTag)
+    }
+
+    private var visibleExercises: [Exercise] {
+        WorkoutFlow.visibleExercises(in: tag, session: session)
     }
 
     var body: some View {
@@ -252,7 +400,11 @@ struct TodayTagSection: View {
                 HStack {
                     Text(tag.name)
                         .font(.headline)
-                    if tag.name != RoutineCatalog.generalTagName {
+                    if isActiveTag {
+                        Text("active")
+                            .font(.caption2.bold())
+                            .foregroundStyle(AppTheme.accent)
+                    } else if tag.name != RoutineCatalog.generalTagName {
                         Text("tag")
                             .font(.caption2.bold())
                             .foregroundStyle(AppTheme.secondaryText)
@@ -266,10 +418,13 @@ struct TodayTagSection: View {
             .buttonStyle(.plain)
 
             if !isCollapsed {
-                ForEach(tag.visibleExercises) { exercise in
+                ForEach(visibleExercises) { exercise in
                     exerciseContent(exercise)
                 }
             }
+        }
+        .onChange(of: isActiveTag) { _, active in
+            if active { isCollapsed = false }
         }
     }
 }
@@ -284,10 +439,19 @@ private struct AddExerciseToRoutineSheet: View {
     @State private var search = ""
     @State private var debouncedSearch = ""
     @State private var customName = ""
-    @State private var generalTag: ExerciseTag?
+    @State private var selectedTagID: UUID?
+
+    private var sortedTags: [ExerciseTag] { RoutineCatalog.sortedTags(tags) }
+
+    private var selectedTag: ExerciseTag? {
+        if let id = selectedTagID {
+            return sortedTags.first { $0.id == id }
+        }
+        return sortedTags.first
+    }
 
     private var sortedTagsFlat: [Exercise] {
-        RoutineCatalog.sortedTags(tags).flatMap(\.visibleExercises)
+        sortedTags.flatMap(\.visibleExercises)
     }
 
     private var availableExercises: [Exercise] {
@@ -302,6 +466,14 @@ private struct AddExerciseToRoutineSheet: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Add to tag") {
+                    Picker("Tag", selection: $selectedTagID) {
+                        ForEach(sortedTags) { tag in
+                            Text(tag.name).tag(Optional(tag.id))
+                        }
+                    }
+                }
+
                 Section {
                     HStack(spacing: 12) {
                         TextField("Custom name", text: $customName)
@@ -332,7 +504,7 @@ private struct AddExerciseToRoutineSheet: View {
                     } else {
                         ForEach(availableExercises) { exercise in
                             Button {
-                                addToGeneral(exercise)
+                                addToSelectedTag(exercise)
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(exercise.name)
@@ -353,23 +525,28 @@ private struct AddExerciseToRoutineSheet: View {
                 }
             }
             .onAppear {
-                generalTag = RoutineCatalog.ensureGeneralTag(context: modelContext)
+                _ = RoutineCatalog.ensureGeneralTag(context: modelContext)
+                if selectedTagID == nil {
+                    selectedTagID = AppSettings.lastUsedTagID ?? sortedTags.first?.id
+                }
             }
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
     }
 
-    private func addToGeneral(_ exercise: Exercise) {
-        guard let generalTag else { return }
-        RoutineCatalog.addExercise(exercise, to: generalTag, context: modelContext)
+    private func addToSelectedTag(_ exercise: Exercise) {
+        guard let tag = selectedTag else { return }
+        RoutineCatalog.addExercise(exercise, to: tag, context: modelContext)
+        AppSettings.lastUsedTagID = tag.id
         dismiss()
     }
 
     private func createCustom() {
         let trimmed = customName.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let generalTag else { return }
-        if RoutineCatalog.addCustomExercise(name: trimmed, to: generalTag, context: modelContext) != nil {
+        guard !trimmed.isEmpty, let tag = selectedTag else { return }
+        if RoutineCatalog.addCustomExercise(name: trimmed, to: tag, context: modelContext) != nil {
+            AppSettings.lastUsedTagID = tag.id
             customName = ""
             dismiss()
         }

@@ -133,6 +133,12 @@ final class WorkoutSession {
         if isQuickLogSession && sets.isEmpty { return checkedExercises.count }
         return Set(sets.compactMap { $0.exercise?.id }).count
     }
+
+    /// Resets the workout clock when the first set of the session is logged.
+    func markStartedIfFirstSet() {
+        guard sets.isEmpty else { return }
+        startedAt = .now
+    }
 }
 
 @Model

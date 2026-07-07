@@ -38,6 +38,10 @@ struct WorkoutDetailView: View {
                         Text("Finished \(ended, format: .dateTime.hour().minute())")
                             .foregroundStyle(AppTheme.secondaryText)
                     }
+                    if !session.sets.isEmpty, let ended = session.endedAt {
+                        Text("Duration \(AppSettings.formatDuration(ended.timeIntervalSince(session.startedAt)))")
+                            .foregroundStyle(AppTheme.secondaryText)
+                    }
                     if isQuickLogOnly {
                         Text("Quick log — exercises only")
                             .foregroundStyle(AppTheme.secondaryText)

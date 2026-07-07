@@ -70,6 +70,7 @@ struct AddSetSheet: View {
     }
 
     private func saveSet() {
+        session.markStartedIfFirstSet()
         let sortIndex = session.sets.filter { $0.exercise?.id == exercise.id }.count
         let set = LoggedSet(
             weight: isBodyweight ? 0 : weight,

@@ -24,6 +24,9 @@ struct ExerciseSetBlock: View {
         if let current = sets.last {
             return current.isBodyweight ? "BW × \(current.reps)" : "\(AppSettings.formatWeight(current.weight)) × \(current.reps)"
         }
+        if let suggestion = AppSettings.smartIncreaseSuggestion(for: exercise.id) {
+            return "\(AppSettings.formatWeight(suggestion.weight)) × \(suggestion.reps)"
+        }
         if let last = priorSet {
             return last.isBodyweight ? "BW × \(last.reps)" : "\(AppSettings.formatWeight(last.weight)) × \(last.reps)"
         }
@@ -31,7 +34,9 @@ struct ExerciseSetBlock: View {
     }
 
     private var weightCaption: String {
-        sets.isEmpty ? "Last time" : "Current"
+        if !sets.isEmpty { return "Current" }
+        if AppSettings.smartIncreaseSuggestion(for: exercise.id) != nil { return "Suggested" }
+        return "Last time"
     }
 
     var body: some View {
@@ -101,6 +106,7 @@ struct ExerciseSetBlock: View {
 
     private func duplicateSet(_ set: LoggedSet) {
         guard let session else { return }
+        session.markStartedIfFirstSet()
         let nextIndex = session.sets.filter { $0.exercise?.id == exercise.id }.count
         let copy = LoggedSet(
             weight: set.weight,

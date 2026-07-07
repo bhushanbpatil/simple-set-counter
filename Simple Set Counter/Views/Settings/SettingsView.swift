@@ -10,6 +10,7 @@ struct SettingsView: View {
 
     @State private var unit = AppSettings.weightUnit
     @State private var step = AppSettings.weightStep
+    @State private var smartIncrease = AppSettings.smartIncreaseEnabled
 
     var body: some View {
         Form {
@@ -31,6 +32,17 @@ struct SettingsView: View {
                 .onChange(of: step) { _, newValue in
                     AppSettings.weightStep = newValue
                 }
+            }
+
+            Section("Training") {
+                Toggle("Smart increase", isOn: $smartIncrease)
+                    .onChange(of: smartIncrease) { _, newValue in
+                        AppSettings.smartIncreaseEnabled = newValue
+                    }
+
+                Text("When any set has more than \(AppSettings.smartIncreaseRepThreshold) reps, the heaviest qualifying set plus \(AppSettings.formatWeight(AppSettings.smartIncreaseIncrement)) becomes next workout’s suggestion.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Privacy") {

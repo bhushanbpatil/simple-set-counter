@@ -129,7 +129,14 @@ struct TodayView: View {
                     .foregroundStyle(AppTheme.secondaryText)
             }
             Spacer()
-            if let session = activeSession {
+            if let session = activeSession, !session.sets.isEmpty {
+                VStack(alignment: .trailing, spacing: 4) {
+                    WorkoutElapsedLabel(startedAt: session.startedAt, isActive: session.isActive)
+                    Text("\(session.sets.count) sets")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.secondaryText)
+                }
+            } else if let session = activeSession {
                 Text("\(session.sets.count) sets")
                     .font(.headline)
             }
@@ -177,6 +184,9 @@ struct TodayView: View {
         if let last = session.sortedSets.filter({ $0.exercise?.id == exercise.id }).last, !last.isBodyweight {
             return last.weight
         }
+        if let suggestion = AppSettings.smartIncreaseSuggestion(for: exercise.id) {
+            return suggestion.weight
+        }
         if let last = ProgressCalculator.fetchLastSet(for: exercise, before: session, context: modelContext), !last.isBodyweight {
             return last.weight
         }
@@ -188,6 +198,9 @@ struct TodayView: View {
         if let last = session.sortedSets.filter({ $0.exercise?.id == exercise.id }).last {
             return last.reps
         }
+        if let suggestion = AppSettings.smartIncreaseSuggestion(for: exercise.id) {
+            return suggestion.reps
+        }
         if let last = ProgressCalculator.fetchLastSet(for: exercise, before: session, context: modelContext) {
             return last.reps
         }
@@ -195,8 +208,24 @@ struct TodayView: View {
     }
 
     private func finishWorkout() {
-        activeSession?.endedAt = .now
+        guard let session = activeSession else { return }
+        AppSettings.applySmartIncrease(after: session)
+        session.endedAt = .now
         try? modelContext.save()
+    }
+}
+
+private struct WorkoutElapsedLabel: View {
+    let startedAt: Date
+    let isActive: Bool
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let end = isActive ? context.date : startedAt
+            Text(AppSettings.formatDuration(end.timeIntervalSince(startedAt)))
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .foregroundStyle(AppTheme.secondaryText)
+        }
     }
 }
 

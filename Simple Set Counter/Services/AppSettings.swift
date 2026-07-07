@@ -30,6 +30,12 @@ enum AppSettings {
     private static let unitKey = "weightUnit"
     private static let stepKey = "weightStep"
     private static let collapsedTagsKey = "collapsedTagIDs"
+    private static let smartIncreaseKey = "smartIncreaseEnabled"
+    private static let smartIncreaseWeightsKey = "smartIncreaseWeights"
+    private static let smartIncreaseRepsKey = "smartIncreaseReps"
+
+    /// A set must exceed this many reps to qualify for smart increase.
+    static let smartIncreaseRepThreshold = 12
 
     static var weightUnit: WeightUnit {
         get {
@@ -77,5 +83,70 @@ enum AppSettings {
             ? String(format: "%.0f", value)
             : String(format: "%.1f", value)
         return "\(formatted) \(weightUnit.label)"
+    }
+
+    static var smartIncreaseEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: smartIncreaseKey) as? Bool ?? false }
+        set { UserDefaults.standard.set(newValue, forKey: smartIncreaseKey) }
+    }
+
+    /// Five pounds, or 2.5 kg when using metric.
+    static var smartIncreaseIncrement: Double {
+        weightUnit == .kilograms ? 2.5 : 5
+    }
+
+    struct SmartIncreaseSuggestion {
+        let weight: Double
+        let reps: Int
+    }
+
+    static func smartIncreaseSuggestion(for exerciseID: UUID) -> SmartIncreaseSuggestion? {
+        let weights = UserDefaults.standard.dictionary(forKey: smartIncreaseWeightsKey) as? [String: Double]
+        let reps = UserDefaults.standard.dictionary(forKey: smartIncreaseRepsKey) as? [String: Int]
+        let key = exerciseID.uuidString
+        guard let weight = weights?[key], let rep = reps?[key] else { return nil }
+        return SmartIncreaseSuggestion(weight: weight, reps: rep)
+    }
+
+    static func setSmartIncreaseSuggestion(for exerciseID: UUID, weight: Double, reps: Int) {
+        let key = exerciseID.uuidString
+        var weights = UserDefaults.standard.dictionary(forKey: smartIncreaseWeightsKey) as? [String: Double] ?? [:]
+        var repsMap = UserDefaults.standard.dictionary(forKey: smartIncreaseRepsKey) as? [String: Int] ?? [:]
+        weights[key] = weight
+        repsMap[key] = reps
+        UserDefaults.standard.set(weights, forKey: smartIncreaseWeightsKey)
+        UserDefaults.standard.set(repsMap, forKey: smartIncreaseRepsKey)
+    }
+
+    static func applySmartIncrease(after session: WorkoutSession) {
+        guard smartIncreaseEnabled else { return }
+
+        let grouped = Dictionary(grouping: session.sortedSets) { $0.exercise?.id }
+        for (exerciseID, sets) in grouped {
+            guard let exerciseID else { continue }
+
+            let qualifying = sets.filter { !$0.isBodyweight && $0.reps > smartIncreaseRepThreshold }
+            guard let best = qualifying.max(by: { lhs, rhs in
+                if lhs.weight != rhs.weight { return lhs.weight < rhs.weight }
+                return lhs.reps < rhs.reps
+            }) else { continue }
+
+            setSmartIncreaseSuggestion(
+                for: exerciseID,
+                weight: best.weight + smartIncreaseIncrement,
+                reps: best.reps
+            )
+        }
+    }
+
+    static func formatDuration(_ interval: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(interval.rounded()))
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, seconds)
+        }
+        return String(format: "%d:%02d", minutes, seconds)
     }
 }

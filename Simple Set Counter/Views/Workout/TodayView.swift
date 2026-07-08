@@ -111,9 +111,34 @@ struct TodayView: View {
                 for tag in tags {
                     RoutineCatalog.normalizeMembershipSortOrders(for: tag, context: modelContext)
                 }
+                applyPendingGuidedIntentIfNeeded()
+                syncLiveActivity()
             }
             .onChange(of: guidedWorkoutFlow) { _, enabled in
-                if !enabled { clearRestTimer() }
+                if !enabled {
+                    clearRestTimer()
+                    WorkoutLiveActivityManager.endAll()
+                    GuidedWorkoutSharedStore.clearMirror()
+                } else {
+                    syncLiveActivity()
+                }
+            }
+            .onChange(of: activeSession?.currentExerciseIDString) { _, _ in
+                syncLiveActivity()
+            }
+            .onChange(of: activeSession?.sets.count) { _, _ in
+                syncLiveActivity()
+            }
+            .onChange(of: restTimerEndsAt) { _, _ in
+                syncLiveActivity()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .guidedWorkoutIntentDidRun)) { _ in
+                applyPendingGuidedIntentIfNeeded()
+                syncLiveActivity()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .setCounterDeepLink)) { note in
+                guard let url = note.object as? URL else { return }
+                handleDeepLink(url)
             }
         }
     }
@@ -445,12 +470,48 @@ struct TodayView: View {
         WorkoutFlow.clearFlow(in: session)
         session.endedAt = .now
         try? modelContext.save()
+        WorkoutLiveActivityManager.endAll()
+        GuidedWorkoutSharedStore.clearMirror()
         workoutSummary = WorkoutSummaryBuilder.build(from: session)
     }
 
     private func handleSetSaved() {
-        guard guidedWorkoutFlow, AppSettings.restTimerEnabled else { return }
-        startRestTimer()
+        if guidedWorkoutFlow, AppSettings.restTimerEnabled {
+            startRestTimer()
+        }
+        syncLiveActivity()
+    }
+
+    private func syncLiveActivity() {
+        WorkoutLiveActivityManager.sync(
+            session: activeSession,
+            tags: tags,
+            restEndsAt: restTimerEndsAt,
+            guidedEnabled: guidedWorkoutFlow
+        )
+    }
+
+    private func applyPendingGuidedIntentIfNeeded() {
+        guard guidedWorkoutFlow, let action = GuidedWorkoutSharedStore.consumePendingAction() else { return }
+        // Database was already updated by LiveActivityIntent in the app process.
+        switch action {
+        case .next, .skip:
+            clearRestTimer()
+        case .duplicate:
+            if AppSettings.restTimerEnabled {
+                startRestTimer()
+            }
+        }
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        guard url.scheme == "setcounter" else { return }
+        if url.host == "logset" {
+            guard guidedWorkoutFlow,
+                  let session = activeSession,
+                  let exercise = WorkoutFlow.currentExercise(in: session, tags: tags) else { return }
+            beginAddingSet(for: exercise, in: WorkoutFlow.currentTag(in: session, tags: tags))
+        }
     }
 
     private func startRestTimer() {

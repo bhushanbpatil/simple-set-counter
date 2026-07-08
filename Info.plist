@@ -4,5 +4,18 @@
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>bhution.Simple-Set-Counter</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>setcounter</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

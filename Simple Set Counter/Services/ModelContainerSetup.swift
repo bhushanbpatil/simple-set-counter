@@ -7,6 +7,8 @@ import SwiftData
 import Foundation
 
 enum ModelContainerSetup {
+    static let shared: ModelContainer = makeContainer()
+
     static func makeContainer() -> ModelContainer {
         let schema = Schema([
             Exercise.self,

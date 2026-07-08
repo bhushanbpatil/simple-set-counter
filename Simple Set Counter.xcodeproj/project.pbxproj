@@ -6,9 +6,48 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A10000012FFA450A008193CB /* WorkoutWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A10000002FFA450A008193CB /* WorkoutWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000032FFA450A008193CB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 34B62B282FFA450A008193CB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A10000042FFA450A008193CB;
+			remoteInfo = WorkoutWidgetsExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A10000052FFA450A008193CB /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A10000012FFA450A008193CB /* WorkoutWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		34B62B302FFA450A008193CB /* Simple Set Counter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Simple Set Counter.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000002FFA450A008193CB /* WorkoutWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = WorkoutWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A10000102FFA450A008193CB /* Exceptions for "WorkoutWidgets" folder in "WorkoutWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A10000042FFA450A008193CB /* WorkoutWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		34B62B322FFA450A008193CB /* Simple Set Counter */ = {
@@ -16,10 +55,25 @@
 			path = "Simple Set Counter";
 			sourceTree = "<group>";
 		};
+		A10000062FFA450A008193CB /* WorkoutWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A10000102FFA450A008193CB /* Exceptions for "WorkoutWidgets" folder in "WorkoutWidgetsExtension" target */,
+			);
+			path = WorkoutWidgets;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		34B62B2D2FFA450A008193CB /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A10000072FFA450A008193CB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				34B62B322FFA450A008193CB /* Simple Set Counter */,
+				A10000062FFA450A008193CB /* WorkoutWidgets */,
 				34B62B312FFA450A008193CB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +96,7 @@
 			isa = PBXGroup;
 			children = (
 				34B62B302FFA450A008193CB /* Simple Set Counter.app */,
+				A10000002FFA450A008193CB /* WorkoutWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,10 +111,12 @@
 				34B62B2C2FFA450A008193CB /* Sources */,
 				34B62B2D2FFA450A008193CB /* Frameworks */,
 				34B62B2E2FFA450A008193CB /* Resources */,
+				A10000052FFA450A008193CB /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A10000082FFA450A008193CB /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				34B62B322FFA450A008193CB /* Simple Set Counter */,
@@ -69,6 +127,28 @@
 			productName = "Simple Set Counter";
 			productReference = 34B62B302FFA450A008193CB /* Simple Set Counter.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A10000042FFA450A008193CB /* WorkoutWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000092FFA450A008193CB /* Build configuration list for PBXNativeTarget "WorkoutWidgetsExtension" */;
+			buildPhases = (
+				A100000A2FFA450A008193CB /* Sources */,
+				A10000072FFA450A008193CB /* Frameworks */,
+				A100000B2FFA450A008193CB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A10000062FFA450A008193CB /* WorkoutWidgets */,
+			);
+			name = WorkoutWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = WorkoutWidgetsExtension;
+			productReference = A10000002FFA450A008193CB /* WorkoutWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -83,9 +163,12 @@
 					34B62B2F2FFA450A008193CB = {
 						CreatedOnToolsVersion = 26.6;
 					};
+					A10000042FFA450A008193CB = {
+						CreatedOnToolsVersion = 26.6;
+					};
 				};
 			};
-			buildConfigurationList = 34B62B2B2FFA450A008193CB /* Build configuration list for PBXProject "Simple Set Counter" */;
+			buildConfigurationList = 34B62B2B2FFA450C008193CB /* Build configuration list for PBXProject "Simple Set Counter" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -100,12 +183,20 @@
 			projectRoot = "";
 			targets = (
 				34B62B2F2FFA450A008193CB /* Simple Set Counter */,
+				A10000042FFA450A008193CB /* WorkoutWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		34B62B2E2FFA450A008193CB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A100000B2FFA450A008193CB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +213,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A100000A2FFA450A008193CB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A10000082FFA450A008193CB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A10000042FFA450A008193CB /* WorkoutWidgetsExtension */;
+			targetProxy = A10000032FFA450A008193CB /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		34B62B392FFA450C008193CB /* Debug */ = {
@@ -251,13 +357,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Simple Set Counter/Simple Set Counter.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = FBHC5LR38P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Set Counter";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -284,13 +392,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = "Simple Set Counter/Simple Set Counter.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = FBHC5LR38P;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Set Counter";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -312,10 +422,68 @@
 			};
 			name = Release;
 		};
+		A100000C2FFA450A008193CB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WorkoutWidgets/WorkoutWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = FBHC5LR38P;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WorkoutWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Set Counter";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "bhution.Simple-Set-Counter.WorkoutWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		A100000D2FFA450A008193CB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = WorkoutWidgets/WorkoutWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
+				DEVELOPMENT_TEAM = FBHC5LR38P;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WorkoutWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Set Counter";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "bhution.Simple-Set-Counter.WorkoutWidgets";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		34B62B2B2FFA450A008193CB /* Build configuration list for PBXProject "Simple Set Counter" */ = {
+		34B62B2B2FFA450C008193CB /* Build configuration list for PBXProject "Simple Set Counter" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				34B62B392FFA450C008193CB /* Debug */,
@@ -329,6 +497,15 @@
 			buildConfigurations = (
 				34B62B3C2FFA450C008193CB /* Debug */,
 				34B62B3D2FFA450C008193CB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A10000092FFA450A008193CB /* Build configuration list for PBXNativeTarget "WorkoutWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A100000C2FFA450A008193CB /* Debug */,
+				A100000D2FFA450A008193CB /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

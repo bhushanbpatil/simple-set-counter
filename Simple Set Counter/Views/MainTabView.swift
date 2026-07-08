@@ -8,6 +8,7 @@ import SwiftData
 
 struct MainTabView: View {
     @Environment(\.modelContext) private var modelContext
+    @AppStorage(AppSettings.accentColorKey) private var accentColorRaw = AccentColorOption.orange.rawValue
 
     var body: some View {
         TabView {
@@ -23,7 +24,7 @@ struct MainTabView: View {
             ExerciseLibraryView()
                 .tabItem { Label("Exercises", systemImage: "list.bullet") }
         }
-        .tint(AppTheme.accent)
+        .tint((AccentColorOption(rawValue: accentColorRaw) ?? .orange).accent)
         .onAppear {
             ExerciseCatalog.seedIfNeeded(context: modelContext)
             RoutineCatalog.ensureGeneralTag(context: modelContext)

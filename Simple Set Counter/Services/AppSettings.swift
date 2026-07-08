@@ -34,6 +34,8 @@ enum AppSettings {
     private static let smartIncreaseWeightsKey = "smartIncreaseWeights"
     private static let smartIncreaseRepsKey = "smartIncreaseReps"
     private static let lastUsedTagKey = "lastUsedTagID"
+    static let accentColorKey = "accentColor"
+    static let guidedWorkoutFlowKey = "guidedWorkoutFlow"
 
     /// A set must exceed this many reps to qualify for smart increase.
     static let smartIncreaseRepThreshold = 12
@@ -53,6 +55,20 @@ enum AppSettings {
             return value > 0 ? value : 5
         }
         set { UserDefaults.standard.set(newValue, forKey: stepKey) }
+    }
+
+    static var accentColor: AccentColorOption {
+        get {
+            guard let raw = UserDefaults.standard.string(forKey: accentColorKey),
+                  let option = AccentColorOption(rawValue: raw) else { return .orange }
+            return option
+        }
+        set { UserDefaults.standard.set(newValue.rawValue, forKey: accentColorKey) }
+    }
+
+    static var guidedWorkoutFlowEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: guidedWorkoutFlowKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: guidedWorkoutFlowKey) }
     }
 
     static func isTagCollapsed(_ id: UUID) -> Bool {

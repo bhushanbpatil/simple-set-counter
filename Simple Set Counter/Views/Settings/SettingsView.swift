@@ -4,16 +4,48 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
 
+    @Query(filter: #Predicate<WorkoutSession> { $0.endedAt == nil })
+    private var activeSessions: [WorkoutSession]
+
+    @AppStorage(AppSettings.accentColorKey) private var accentColorRaw = AccentColorOption.orange.rawValue
+    @AppStorage(AppSettings.guidedWorkoutFlowKey) private var guidedWorkoutFlow = true
     @State private var unit = AppSettings.weightUnit
     @State private var step = AppSettings.weightStep
     @State private var smartIncrease = AppSettings.smartIncreaseEnabled
 
+    private var accentColor: Binding<AccentColorOption> {
+        Binding(
+            get: { AccentColorOption(rawValue: accentColorRaw) ?? .orange },
+            set: { accentColorRaw = $0.rawValue }
+        )
+    }
+
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Accent color", selection: accentColor) {
+                    ForEach(AccentColorOption.allCases) { option in
+                        HStack(spacing: 10) {
+                            Circle()
+                                .fill(option.gradient)
+                                .frame(width: 18, height: 18)
+                            Text(option.title)
+                        }
+                        .tag(option)
+                    }
+                }
+
+                Text("Changes buttons, highlights, and the slide-to-finish control.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Units") {
                 Picker("Weight unit", selection: $unit) {
                     ForEach(WeightUnit.allCases) { item in
@@ -35,6 +67,17 @@ struct SettingsView: View {
             }
 
             Section("Training") {
+                Toggle("Guided workout", isOn: $guidedWorkoutFlow)
+                    .onChange(of: guidedWorkoutFlow) { _, enabled in
+                        guard !enabled, let session = activeSessions.first else { return }
+                        WorkoutFlow.clearFlow(in: session)
+                        try? modelContext.save()
+                    }
+
+                Text("Shows the active exercise card with Next and Skip. Turn off to log sets directly from your routine list.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+
                 Toggle("Smart increase", isOn: $smartIncrease)
                     .onChange(of: smartIncrease) { _, newValue in
                         AppSettings.smartIncreaseEnabled = newValue

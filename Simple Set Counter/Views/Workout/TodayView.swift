@@ -13,6 +13,8 @@ struct TodayView: View {
     private var activeSessions: [WorkoutSession]
     @Query(sort: \ExerciseTag.sortOrder) private var tags: [ExerciseTag]
 
+    @AppStorage(AppSettings.accentColorKey) private var accentColorRaw = AccentColorOption.orange.rawValue
+    @AppStorage(AppSettings.guidedWorkoutFlowKey) private var guidedWorkoutFlow = true
     @State private var showSettings = false
     @State private var showRoutineEditor = false
     @State private var showAddExercise = false
@@ -20,7 +22,12 @@ struct TodayView: View {
     @State private var showFinishConfirm = false
 
     private var activeSession: WorkoutSession? { activeSessions.first }
-    private var displayTags: [ExerciseTag] { WorkoutFlow.tagsForToday(tags, session: activeSession) }
+    private var displayTags: [ExerciseTag] {
+        if guidedWorkoutFlow {
+            return WorkoutFlow.tagsForToday(tags, session: activeSession)
+        }
+        return RoutineCatalog.sortedTags(tags)
+    }
     private var routineExerciseCount: Int {
         displayTags.reduce(0) { $0 + $1.visibleExercises.count }
     }
@@ -31,7 +38,8 @@ struct TodayView: View {
                 VStack(spacing: 16) {
                     headerCard
 
-                    if let session = activeSession,
+                    if guidedWorkoutFlow,
+                       let session = activeSession,
                        let current = WorkoutFlow.currentExercise(in: session, tags: tags) {
                         nowCard(session: session, exercise: current)
                     }
@@ -44,13 +52,15 @@ struct TodayView: View {
                                 TodayTagSection(
                                     tag: tag,
                                     session: activeSession,
-                                    isActiveTag: activeSession.flatMap { WorkoutFlow.activeTagID(in: $0) } == tag.id
+                                    isActiveTag: guidedWorkoutFlow
+                                        && activeSession.flatMap { WorkoutFlow.activeTagID(in: $0) } == tag.id,
+                                    simpleMode: !guidedWorkoutFlow
                                 ) { exercise in
                                     ExerciseSetBlock(
                                         exercise: exercise,
                                         session: activeSession,
                                         onAddSet: { beginAddingSet(for: exercise, in: tag) },
-                                        onSelect: { startExercise(exercise, in: tag) }
+                                        onSelect: guidedWorkoutFlow ? { startExercise(exercise, in: tag) } : nil
                                     )
                                 }
                             }
@@ -165,6 +175,15 @@ struct TodayView: View {
                             Text("×")
                                 .foregroundStyle(AppTheme.secondaryText)
                             Text("\(set.reps) reps")
+                            Spacer()
+                            Button {
+                                deleteSet(set)
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.caption)
+                                    .foregroundStyle(AppTheme.accent.opacity(0.85))
+                            }
+                            .buttonStyle(.plain)
                         }
                         .font(.subheadline.weight(.semibold))
                     }
@@ -299,6 +318,12 @@ struct TodayView: View {
 
     private func beginAddingSet(for exercise: Exercise, in tag: ExerciseTag?) {
         let session = sessionForLogging()
+
+        if !guidedWorkoutFlow {
+            addingExercise = exercise
+            return
+        }
+
         let resolvedTag = tag ?? WorkoutFlow.tag(containing: exercise, in: tags)
         guard let resolvedTag else {
             addingExercise = exercise
@@ -359,6 +384,11 @@ struct TodayView: View {
         session.endedAt = .now
         try? modelContext.save()
     }
+
+    private func deleteSet(_ set: LoggedSet) {
+        modelContext.delete(set)
+        try? modelContext.save()
+    }
 }
 
 private struct WorkoutElapsedLabel: View {
@@ -379,6 +409,7 @@ struct TodayTagSection: View {
     let tag: ExerciseTag
     let session: WorkoutSession?
     let isActiveTag: Bool
+    var simpleMode: Bool = false
     let exerciseContent: (Exercise) -> ExerciseSetBlock
 
     @State private var isCollapsed: Bool
@@ -387,17 +418,22 @@ struct TodayTagSection: View {
         tag: ExerciseTag,
         session: WorkoutSession?,
         isActiveTag: Bool,
+        simpleMode: Bool = false,
         @ViewBuilder exerciseContent: @escaping (Exercise) -> ExerciseSetBlock
     ) {
         self.tag = tag
         self.session = session
         self.isActiveTag = isActiveTag
+        self.simpleMode = simpleMode
         self.exerciseContent = exerciseContent
         _isCollapsed = State(initialValue: AppSettings.isTagCollapsed(tag.id) && !isActiveTag)
     }
 
     private var visibleExercises: [Exercise] {
-        WorkoutFlow.visibleExercises(in: tag, session: session)
+        if simpleMode {
+            return tag.visibleExercises
+        }
+        return WorkoutFlow.visibleExercises(in: tag, session: session)
     }
 
     var body: some View {

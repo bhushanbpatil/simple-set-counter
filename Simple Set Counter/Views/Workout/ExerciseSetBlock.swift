@@ -13,6 +13,7 @@ struct ExerciseSetBlock: View {
     let session: WorkoutSession?
     let onAddSet: () -> Void
     var onSelect: (() -> Void)? = nil
+    var highlightLogSetButton = false
 
     @State private var priorSet: LoggedSet?
 
@@ -66,6 +67,7 @@ struct ExerciseSetBlock: View {
                         .background(Color.white.opacity(0.06))
                         .clipShape(Circle())
                 }
+                .optionalSpotlightAnchor(highlightLogSetButton ? "logSetButton" : nil)
             }
 
             ForEach(Array(sets.enumerated()), id: \.element.id) { index, set in

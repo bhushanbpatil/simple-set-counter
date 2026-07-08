@@ -101,6 +101,20 @@ enum RoutineCatalog {
     }
 
     @MainActor
+    static func seedStarterRoutineIfNeeded(context: ModelContext) {
+        let general = ensureGeneralTag(context: context)
+        guard orderedExercises(in: general).isEmpty else { return }
+
+        let starterNames = ["Squat", "Bench Press", "Barbell Row"]
+        guard let allExercises = try? context.fetch(FetchDescriptor<Exercise>()) else { return }
+
+        for name in starterNames {
+            guard let exercise = allExercises.first(where: { $0.name == name }) else { continue }
+            addExercise(exercise, to: general, context: context)
+        }
+    }
+
+    @MainActor
     static func addExercise(_ exercise: Exercise, to tag: ExerciseTag, context: ModelContext) {
         if tag.memberships.contains(where: { $0.exercise?.id == exercise.id }) { return }
 

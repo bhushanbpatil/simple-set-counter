@@ -35,6 +35,19 @@ struct TodayView: View {
         displayTags.reduce(0) { $0 + $1.visibleExercises.count }
     }
 
+    private var firstRoutineExerciseID: UUID? {
+        for tag in displayTags {
+            let exercises: [Exercise]
+            if guidedWorkoutFlow {
+                exercises = WorkoutFlow.visibleExercises(in: tag, session: activeSession)
+            } else {
+                exercises = tag.visibleExercises
+            }
+            if let first = exercises.first { return first.id }
+        }
+        return nil
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -53,6 +66,7 @@ struct TodayView: View {
                         Text("Routine")
                             .font(.subheadline.weight(.semibold))
                     }
+                    .spotlightAnchor("routineButton")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -60,6 +74,7 @@ struct TodayView: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .spotlightAnchor("settingsButton")
                 }
             }
             .sheet(isPresented: $showSettings) {
@@ -107,6 +122,7 @@ struct TodayView: View {
     private var todayScrollContent: some View {
         VStack(spacing: 16) {
             headerCard
+                .spotlightAnchor("headerCard")
             guidedWorkoutSections
             routineListSection
             addExerciseButton
@@ -171,7 +187,8 @@ struct TodayView: View {
                 exercise: exercise,
                 session: activeSession,
                 onAddSet: { beginAddingSet(for: exercise, in: tag) },
-                onSelect: guidedWorkoutFlow ? { startExercise(exercise, in: tag) } : nil
+                onSelect: guidedWorkoutFlow ? { startExercise(exercise, in: tag) } : nil,
+                highlightLogSetButton: exercise.id == firstRoutineExerciseID
             )
         }
     }

@@ -60,7 +60,7 @@ struct SpotlightTutorialStep: Identifiable {
             id: "welcome",
             anchorID: nil,
             title: "Welcome",
-            message: "A quick tour of the app — we’ll point at the buttons you’ll use every gym day.",
+            message: "A quick tour of the app. We'll point at the buttons you'll use every gym day.",
             highlightPadding: 0,
             highlightCornerRadius: 0,
             tooltipPlacement: .automatic

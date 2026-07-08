@@ -112,7 +112,7 @@ enum WorkoutFlow {
         try? context.save()
     }
 
-    /// Tap an exercise to work on it — moves it to the front of the queue.
+    /// Tap an exercise to work on it; moves it to the front of the queue.
     @MainActor
     static func startExercise(_ exercise: Exercise, in tag: ExerciseTag, session: WorkoutSession, context: ModelContext) {
         var queue = ensureQueue(for: tag, in: session)

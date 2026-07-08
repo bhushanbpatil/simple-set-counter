@@ -43,7 +43,7 @@ struct WorkoutDetailView: View {
                             .foregroundStyle(AppTheme.secondaryText)
                     }
                     if isQuickLogOnly {
-                        Text("Quick log — exercises only")
+                        Text("Quick log: exercises only")
                             .foregroundStyle(AppTheme.secondaryText)
                     }
                 }

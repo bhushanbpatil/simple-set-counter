@@ -357,7 +357,7 @@ struct TodayView: View {
         VStack(spacing: 12) {
             Text("Add your usual exercises")
                 .font(.headline)
-            Text("They'll show up here every day. Tags like Upper Body are optional — General is the default.")
+            Text("They'll show up here every day. Tags like Upper Body are optional. General is the default.")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.secondaryText)
                 .multilineTextAlignment(.center)
@@ -393,7 +393,7 @@ struct TodayView: View {
 
         if WorkoutFlow.currentExerciseID(in: session) == exercise.id,
            WorkoutFlow.activeTagID(in: session) == resolvedTag.id {
-            // Already on this exercise — log another set without reshuffling the queue.
+            // Already on this exercise; log another set without reshuffling the queue.
             WorkoutFlow.setCurrentExercise(exercise, in: resolvedTag, session: session, context: modelContext)
         } else {
             WorkoutFlow.startExercise(exercise, in: resolvedTag, session: session, context: modelContext)

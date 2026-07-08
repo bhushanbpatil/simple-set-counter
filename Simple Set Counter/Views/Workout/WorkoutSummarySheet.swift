@@ -20,7 +20,7 @@ struct WorkoutSummarySheet: View {
                             .foregroundStyle(AppTheme.accent)
                         Text("Workout complete")
                             .font(.title2.weight(.bold))
-                        Text("Nice work — your sets are saved to History.")
+                        Text("Nice work. Your sets are saved to History.")
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.secondaryText)
                             .multilineTextAlignment(.center)

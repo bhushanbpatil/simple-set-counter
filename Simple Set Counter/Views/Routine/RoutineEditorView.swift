@@ -90,7 +90,7 @@ struct RoutineEditorView: View {
             ForEach(sortedTags) { tag in
                 Section {
                     if tag.visibleExercises.isEmpty {
-                        Text("No exercises yet — tap Add Exercise below.")
+                        Text("No exercises yet. Tap Add Exercise below.")
                             .font(.subheadline)
                             .foregroundStyle(AppTheme.secondaryText)
                             .listRowBackground(AppTheme.card)

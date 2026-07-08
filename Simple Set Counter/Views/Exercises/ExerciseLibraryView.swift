@@ -30,25 +30,23 @@ struct ExerciseLibraryView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(exercise.name)
                                     .foregroundStyle(.white)
-                                Text(exercise.category)
-                                    .font(.caption)
-                                    .foregroundStyle(AppTheme.secondaryText)
+                                if exercise.category != "Custom" {
+                                    Text(exercise.category)
+                                        .font(.caption)
+                                        .foregroundStyle(AppTheme.secondaryText)
+                                }
                             }
                             Spacer()
-                            if exercise.isCustom {
-                                Text("Custom")
-                                    .font(.caption2.bold())
-                                    .foregroundStyle(AppTheme.accent)
-                            }
                         }
                         .listRowBackground(AppTheme.card)
-                        .swipeActions(edge: .trailing) {
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             if exercise.isCustom {
-                                Button(role: .destructive) {
+                                Button {
                                     hideExercise(exercise)
                                 } label: {
                                     Label("Remove", systemImage: "trash")
                                 }
+                                .tint(AppTheme.accent)
                             }
                         }
                     }

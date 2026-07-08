@@ -66,13 +66,6 @@ struct TodayView: View {
                             .background(AppTheme.card)
                             .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-
-                    if activeSession != nil, activeSession?.sets.isEmpty == false {
-                        Button("Finish Workout") {
-                            showFinishConfirm = true
-                        }
-                        .buttonStyle(.primary)
-                    }
                 }
                 .padding(20)
             }
@@ -235,7 +228,28 @@ struct TodayView: View {
     }
 
     private var headerCard: some View {
-        HStack {
+        Group {
+            if let session = activeSession, !session.sets.isEmpty {
+                SwipeToFinishCard(
+                    hint: "Swipe right to finish",
+                    revealTitle: "Finish workout"
+                ) {
+                    showFinishConfirm = true
+                } content: {
+                    inProgressHeaderContent(session: session)
+                }
+            } else {
+                inProgressHeaderContent(session: activeSession)
+                    .padding(16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(AppTheme.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+        }
+    }
+
+    private func inProgressHeaderContent(session: WorkoutSession?) -> some View {
+        HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(activeSession == nil ? "Ready to train" : "In progress")
                     .font(.caption.bold())
@@ -245,21 +259,18 @@ struct TodayView: View {
                     .foregroundStyle(AppTheme.secondaryText)
             }
             Spacer()
-            if let session = activeSession, !session.sets.isEmpty {
+            if let session, !session.sets.isEmpty {
                 VStack(alignment: .trailing, spacing: 4) {
                     WorkoutElapsedLabel(startedAt: session.startedAt, isActive: session.isActive)
                     Text("\(session.sets.count) sets")
                         .font(.caption)
                         .foregroundStyle(AppTheme.secondaryText)
                 }
-            } else if let session = activeSession {
+            } else if let session {
                 Text("\(session.sets.count) sets")
                     .font(.headline)
             }
         }
-        .padding(16)
-        .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
     private var emptyRoutineCard: some View {
@@ -400,15 +411,6 @@ struct TodayTagSection: View {
                 HStack {
                     Text(tag.name)
                         .font(.headline)
-                    if isActiveTag {
-                        Text("active")
-                            .font(.caption2.bold())
-                            .foregroundStyle(AppTheme.accent)
-                    } else if tag.name != RoutineCatalog.generalTagName {
-                        Text("tag")
-                            .font(.caption2.bold())
-                            .foregroundStyle(AppTheme.secondaryText)
-                    }
                     Spacer()
                     Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
                         .font(.caption.bold())

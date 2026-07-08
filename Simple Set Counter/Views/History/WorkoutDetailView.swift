@@ -71,9 +71,10 @@ struct WorkoutDetailView: View {
                 }
 
                 Section {
-                    Button("Delete Workout", role: .destructive) {
+                    Button("Delete Workout") {
                         showDeleteConfirm = true
                     }
+                    .foregroundStyle(AppTheme.accent)
                 }
             }
             .scrollContentBackground(.hidden)
@@ -82,11 +83,12 @@ struct WorkoutDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(.dark, for: .navigationBar)
         .alert("Delete this workout?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) {
+            Button("Delete") {
                 modelContext.delete(session)
                 try? modelContext.save()
                 dismiss()
             }
+            .foregroundStyle(AppTheme.accent)
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This cannot be undone.")

@@ -62,6 +62,30 @@ enum RoutineCatalog {
     }
 
     @MainActor
+    static func reorderExercises(in tag: ExerciseTag, from source: IndexSet, to destination: Int, context: ModelContext) {
+        var ordered = orderedMemberships(in: tag).filter { membership in
+            guard let exercise = membership.exercise else { return false }
+            return !exercise.isHidden
+        }
+
+        let moving = source.sorted().map { ordered[$0] }
+        for index in source.sorted(by: >) {
+            ordered.remove(at: index)
+        }
+
+        var insertIndex = destination
+        for index in source where index < destination {
+            insertIndex -= 1
+        }
+        ordered.insert(contentsOf: moving, at: insertIndex)
+
+        for (index, membership) in ordered.enumerated() {
+            membership.sortOrder = index
+        }
+        try? context.save()
+    }
+
+    @MainActor
     static func moveExercise(_ exercise: Exercise, in tag: ExerciseTag, direction: MoveDirection, context: ModelContext) {
         var ordered = orderedMemberships(in: tag)
         guard let index = ordered.firstIndex(where: { $0.exercise?.id == exercise.id }) else { return }

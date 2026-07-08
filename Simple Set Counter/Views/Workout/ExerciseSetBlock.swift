@@ -40,6 +40,10 @@ struct ExerciseSetBlock: View {
         return "Last time"
     }
 
+    private var isPlaceholderWeight: Bool {
+        sets.isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .top) {
@@ -47,11 +51,11 @@ struct ExerciseSetBlock: View {
                     Text(exercise.name)
                         .font(.headline)
                     Text(weightCaption)
-                        .font(.caption2.bold())
-                        .foregroundStyle(AppTheme.accent)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(AppTheme.accent.opacity(0.85))
                     Text(weightLabel)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.white)
+                        .font(isPlaceholderWeight ? .subheadline.weight(.regular) : .subheadline.weight(.semibold))
+                        .foregroundStyle(isPlaceholderWeight ? AppTheme.secondaryText : .white)
                 }
                 Spacer()
                 Button(action: onAddSet) {
@@ -75,12 +79,14 @@ struct ExerciseSetBlock: View {
                         .foregroundStyle(AppTheme.secondaryText)
                     Text("\(set.reps) reps")
                     Spacer()
-                    Button(role: .destructive) {
+                    Button {
                         deleteSet(set)
                     } label: {
                         Image(systemName: "trash")
                             .font(.caption)
+                            .foregroundStyle(AppTheme.accent.opacity(0.85))
                     }
+                    .buttonStyle(.plain)
                 }
                 .font(.subheadline.weight(.semibold))
             }

@@ -34,18 +34,8 @@ struct ExercisePickerView: View {
                                 onSelect(exercise)
                                 dismiss()
                             } label: {
-                                HStack {
-                                    Text(exercise.name)
-                                        .foregroundStyle(.primary)
-                                    if exercise.isCustom {
-                                        Text("Custom")
-                                            .font(.caption2.bold())
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(AppTheme.accent.opacity(0.2))
-                                            .clipShape(Capsule())
-                                    }
-                                }
+                                Text(exercise.name)
+                                    .foregroundStyle(.primary)
                             }
                         }
                     }

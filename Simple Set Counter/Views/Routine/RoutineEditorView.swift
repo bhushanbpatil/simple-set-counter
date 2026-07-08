@@ -58,28 +58,72 @@ struct RoutineEditorView: View {
     @State private var addExerciseTag: TagPickerItem?
     @State private var pendingConfirm: RoutineConfirm?
     @FocusState private var newTagFocused: Bool
+    @State private var editModeState: EditMode = .inactive
 
     private var sortedTags: [ExerciseTag] { RoutineCatalog.sortedTags(tags) }
     private var optionalTags: [ExerciseTag] {
         sortedTags.filter { $0.name != RoutineCatalog.generalTagName }
     }
 
+    private var isEditing: Bool { editModeState.isEditing }
+    private var hasReorderableExercises: Bool {
+        sortedTags.contains { $0.visibleExercises.count > 1 }
+    }
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
-                Text("General is the default tag. Use ↑↓ to set exercise order, and the folder button to move between tags.")
+        List {
+            Section {
+                Text("General is the default tag. Use the folder button to move exercises between tags.")
                     .font(.subheadline)
                     .foregroundStyle(AppTheme.secondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .listRowBackground(AppTheme.card)
 
-                newTagCard
+                if hasReorderableExercises {
+                    reorderHintRow
+                        .listRowBackground(AppTheme.card)
+                }
 
-                ForEach(sortedTags) { tag in
-                    tagCard(tag)
+                newTagRow
+                    .listRowBackground(AppTheme.card)
+            }
+
+            ForEach(sortedTags) { tag in
+                Section {
+                    if tag.visibleExercises.isEmpty {
+                        Text("No exercises yet — tap Add Exercise below.")
+                            .font(.subheadline)
+                            .foregroundStyle(AppTheme.secondaryText)
+                            .listRowBackground(AppTheme.card)
+                    } else {
+                        ForEach(tag.visibleExercises) { exercise in
+                            exerciseRow(exercise, in: tag)
+                                .listRowBackground(AppTheme.card)
+                        }
+                        .onMove { source, destination in
+                            RoutineCatalog.reorderExercises(in: tag, from: source, to: destination, context: modelContext)
+                        }
+                    }
+
+                    Button {
+                        addExerciseTag = TagPickerItem(id: tag.id)
+                    } label: {
+                        Label("Add Exercise", systemImage: "plus")
+                            .foregroundStyle(AppTheme.accent)
+                    }
+                    .listRowBackground(AppTheme.card)
+                } header: {
+                    tagSectionHeader(tag)
+                } footer: {
+                    if tag.visibleExercises.count > 1, !isEditing {
+                        Text("Tap Edit above, then drag the handles on the right.")
+                            .font(.caption)
+                            .foregroundStyle(AppTheme.secondaryText)
+                    }
                 }
             }
-            .padding(20)
         }
+        .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .background(AppTheme.background)
         .navigationTitle("My Routine")
         .navigationBarTitleDisplayMode(.inline)
@@ -88,7 +132,13 @@ struct RoutineEditorView: View {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Done") { dismiss() }
             }
+            ToolbarItem(placement: .topBarTrailing) {
+                EditButton()
+                    .foregroundStyle(AppTheme.accent)
+                    .disabled(!hasReorderableExercises)
+            }
         }
+        .environment(\.editMode, $editModeState)
         .sheet(item: $addExerciseTag) { item in
             if let tag = tags.first(where: { $0.id == item.id }) {
                 AddExerciseToTagSheet(tag: tag)
@@ -102,7 +152,7 @@ struct RoutineEditorView: View {
             ),
             presenting: pendingConfirm
         ) { confirm in
-            Button(confirm.actionTitle, role: .destructive) {
+            Button(confirm.actionTitle) {
                 performConfirm(confirm)
             }
             Button("Cancel", role: .cancel) {}
@@ -117,7 +167,24 @@ struct RoutineEditorView: View {
         }
     }
 
-    private var newTagCard: some View {
+    private var reorderHintRow: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "line.3.horizontal")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(AppTheme.accent)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(isEditing ? "Drag exercises to reorder" : "Reorder exercises")
+                    .font(.subheadline.weight(.semibold))
+                Text(isEditing ? "Use the handles on the right of each row." : "Tap Edit in the top-right corner.")
+                    .font(.caption)
+                    .foregroundStyle(AppTheme.secondaryText)
+            }
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var newTagRow: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(optionalTags.isEmpty ? "Optional tags" : "New tag")
                 .font(.caption.bold())
@@ -137,127 +204,77 @@ struct RoutineEditorView: View {
                     .disabled(newTagName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(16)
-        .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .padding(.vertical, 4)
     }
 
-    private func tagCard(_ tag: ExerciseTag) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text(tag.name)
-                    .font(.headline)
-                if tag.name == RoutineCatalog.generalTagName {
-                    Text("default")
-                        .font(.caption2.bold())
-                        .foregroundStyle(AppTheme.secondaryText)
-                }
-                Spacer()
-                if tag.name != RoutineCatalog.generalTagName {
-                    Button {
-                        pendingConfirm = .deleteTag(tag)
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.caption)
-                            .foregroundStyle(.red.opacity(0.85))
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
-            if tag.visibleExercises.isEmpty {
-                Text("No exercises yet — tap Add Exercise below.")
-                    .font(.subheadline)
+    private func tagSectionHeader(_ tag: ExerciseTag) -> some View {
+        HStack {
+            Text(tag.name)
+            if tag.name == RoutineCatalog.generalTagName {
+                Text("default")
+                    .font(.caption2.bold())
                     .foregroundStyle(AppTheme.secondaryText)
-            } else {
-                ForEach(Array(tag.visibleExercises.enumerated()), id: \.element.id) { index, exercise in
-                    exerciseRow(exercise, at: index, in: tag)
-
-                    if exercise.id != tag.visibleExercises.last?.id {
-                        Divider().overlay(Color.white.opacity(0.06))
-                    }
+            }
+            Spacer()
+            if tag.name != RoutineCatalog.generalTagName {
+                Button {
+                    pendingConfirm = .deleteTag(tag)
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.accent.opacity(0.85))
                 }
+                .buttonStyle(.plain)
             }
-
-            Button {
-                addExerciseTag = TagPickerItem(id: tag.id)
-            } label: {
-                Label("Add Exercise", systemImage: "plus")
-                    .foregroundStyle(AppTheme.accent)
-            }
-            .font(.subheadline.weight(.semibold))
         }
-        .padding(16)
-        .background(AppTheme.card)
-        .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
-    private func exerciseRow(_ exercise: Exercise, at index: Int, in tag: ExerciseTag) -> some View {
-        let exercises = tag.visibleExercises
-        return HStack {
-            VStack(spacing: 4) {
-                Button {
-                    RoutineCatalog.moveExercise(exercise, in: tag, direction: .up, context: modelContext)
-                } label: {
-                    Image(systemName: "chevron.up")
-                        .font(.caption2.bold())
-                }
-                .disabled(index == 0)
-                .opacity(index == 0 ? 0.25 : 1)
-
-                Button {
-                    RoutineCatalog.moveExercise(exercise, in: tag, direction: .down, context: modelContext)
-                } label: {
-                    Image(systemName: "chevron.down")
-                        .font(.caption2.bold())
-                }
-                .disabled(index >= exercises.count - 1)
-                .opacity(index >= exercises.count - 1 ? 0.25 : 1)
+    private func exerciseRow(_ exercise: Exercise, in tag: ExerciseTag) -> some View {
+        HStack(spacing: 12) {
+            if !isEditing {
+                Image(systemName: "line.3.horizontal")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.secondaryText.opacity(0.45))
+                    .accessibilityHidden(true)
             }
-            .foregroundStyle(AppTheme.accent)
-            .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(exercise.name)
                     .font(.subheadline.weight(.semibold))
-                if exercise.isCustom {
-                    Text("Custom")
-                        .font(.caption2.bold())
-                        .foregroundStyle(AppTheme.accent)
-                }
             }
 
             Spacer()
 
-            if sortedTags.count > 1 {
-                Menu {
-                    ForEach(sortedTags.filter { $0.id != tag.id }) { destination in
-                        Button(destination.name) {
-                            RoutineCatalog.moveExercise(exercise, from: tag, to: destination, context: modelContext)
+            if !isEditing {
+                if sortedTags.count > 1 {
+                    Menu {
+                        ForEach(sortedTags.filter { $0.id != tag.id }) { destination in
+                            Button(destination.name) {
+                                RoutineCatalog.moveExercise(exercise, from: tag, to: destination, context: modelContext)
+                            }
                         }
+                    } label: {
+                        Image(systemName: "folder")
+                            .foregroundStyle(AppTheme.accent)
                     }
-                } label: {
-                    Image(systemName: "folder")
-                        .foregroundStyle(AppTheme.accent)
+                    .accessibilityLabel("Move to tag")
                 }
-                .accessibilityLabel("Move to tag")
-            }
 
-            Button {
-                pendingConfirm = .removeExercise(exercise)
-            } label: {
-                Image(systemName: "minus.circle.fill")
-                    .foregroundStyle(.orange.opacity(0.9))
+                Button {
+                    pendingConfirm = .removeExercise(exercise)
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .foregroundStyle(AppTheme.accent.opacity(0.9))
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
         .contextMenu {
-            Button("Remove from routine", role: .destructive) {
+            Button("Remove from routine") {
                 pendingConfirm = .removeExercise(exercise)
             }
             if exercise.isCustom {
-                Button("Delete exercise", role: .destructive) {
+                Button("Delete exercise") {
                     pendingConfirm = .deleteExercise(exercise)
                 }
             }

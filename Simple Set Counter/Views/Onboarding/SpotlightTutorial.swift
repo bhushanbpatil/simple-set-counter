@@ -17,13 +17,14 @@ struct SpotlightAnchorKey: PreferenceKey {
 
 extension View {
     func spotlightAnchor(_ id: String) -> some View {
-        background {
+        overlay {
             GeometryReader { proxy in
                 Color.clear.preference(
                     key: SpotlightAnchorKey.self,
                     value: [id: proxy.frame(in: .global)]
                 )
             }
+            .allowsHitTesting(false)
         }
     }
 
@@ -128,7 +129,6 @@ struct SpotlightTutorialOverlay: View {
 
             ZStack {
                 spotlightMask(highlight: highlight, in: geometry.size)
-                    .ignoresSafeArea()
                     .onTapGesture { onNext() }
 
                 if step.anchorID != nil, let highlight {
@@ -142,7 +142,9 @@ struct SpotlightTutorialOverlay: View {
                 tooltipCard(highlight: highlight, in: geometry)
                     .padding(.horizontal, 20)
             }
+            .frame(width: geometry.size.width, height: geometry.size.height)
         }
+        .ignoresSafeArea()
         .transition(.opacity)
     }
 
@@ -160,9 +162,20 @@ struct SpotlightTutorialOverlay: View {
         }
 
         guard var rect = anchors[anchorID], rect.width > 1, rect.height > 1 else { return nil }
+        rect = localRect(rect, in: geometry)
         let pad = step.highlightPadding
         rect = rect.insetBy(dx: -pad, dy: -pad)
         return rect
+    }
+
+    private func localRect(_ rect: CGRect, in geometry: GeometryProxy) -> CGRect {
+        let origin = geometry.frame(in: .global).origin
+        return CGRect(
+            x: rect.origin.x - origin.x,
+            y: rect.origin.y - origin.y,
+            width: rect.width,
+            height: rect.height
+        )
     }
 
     private func spotlightMask(highlight: CGRect?, in size: CGSize) -> some View {

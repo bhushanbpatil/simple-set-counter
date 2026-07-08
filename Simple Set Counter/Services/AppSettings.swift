@@ -5,6 +5,28 @@
 
 import Foundation
 
+enum RestTimerDuration: Int, CaseIterable, Identifiable {
+    case s30 = 30
+    case s45 = 45
+    case s60 = 60
+    case s90 = 90
+    case m2 = 120
+    case m3 = 180
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .s30: return "30 sec"
+        case .s45: return "45 sec"
+        case .s60: return "1 min"
+        case .s90: return "90 sec"
+        case .m2: return "2 min"
+        case .m3: return "3 min"
+        }
+    }
+}
+
 enum WeightUnit: String, CaseIterable, Identifiable {
     case pounds
     case kilograms
@@ -36,6 +58,12 @@ enum AppSettings {
     private static let lastUsedTagKey = "lastUsedTagID"
     static let accentColorKey = "accentColor"
     static let guidedWorkoutFlowKey = "guidedWorkoutFlow"
+    static let restTimerEnabledKey = "restTimerEnabled"
+    static let restTimerDurationKey = "restTimerDuration"
+    static let hasCompletedOnboardingKey = "hasCompletedOnboarding"
+
+    /// Public privacy policy URL (GitHub Pages).
+    static let privacyPolicyURL = "https://bhushanbpatil.github.io/simple-set-counter/privacy.html"
 
     /// A set must exceed this many reps to qualify for smart increase.
     static let smartIncreaseRepThreshold = 12
@@ -60,15 +88,34 @@ enum AppSettings {
     static var accentColor: AccentColorOption {
         get {
             guard let raw = UserDefaults.standard.string(forKey: accentColorKey),
-                  let option = AccentColorOption(rawValue: raw) else { return .orange }
+                  let option = AccentColorOption(rawValue: raw) else { return .lime }
             return option
         }
         set { UserDefaults.standard.set(newValue.rawValue, forKey: accentColorKey) }
     }
 
     static var guidedWorkoutFlowEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: guidedWorkoutFlowKey) as? Bool ?? true }
+        get { UserDefaults.standard.object(forKey: guidedWorkoutFlowKey) as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: guidedWorkoutFlowKey) }
+    }
+
+    static var restTimerEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: restTimerEnabledKey) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: restTimerEnabledKey) }
+    }
+
+    static var restTimerDuration: Int {
+        get {
+            let stored = UserDefaults.standard.integer(forKey: restTimerDurationKey)
+            if stored > 0 { return stored }
+            return RestTimerDuration.s90.rawValue
+        }
+        set { UserDefaults.standard.set(newValue, forKey: restTimerDurationKey) }
+    }
+
+    static var restTimerDurationOption: RestTimerDuration {
+        get { RestTimerDuration(rawValue: restTimerDuration) ?? .s90 }
+        set { restTimerDuration = newValue.rawValue }
     }
 
     static func isTagCollapsed(_ id: UUID) -> Bool {
@@ -117,7 +164,7 @@ enum AppSettings {
     }
 
     static var smartIncreaseEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: smartIncreaseKey) as? Bool ?? false }
+        get { UserDefaults.standard.object(forKey: smartIncreaseKey) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: smartIncreaseKey) }
     }
 
@@ -179,5 +226,22 @@ enum AppSettings {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         }
         return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    static func formatRestCountdown(_ interval: TimeInterval) -> String {
+        let totalSeconds = max(0, Int(interval.rounded()))
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        if minutes > 0 {
+            return String(format: "%d:%02d", minutes, seconds)
+        }
+        return "0:\(String(format: "%02d", seconds))"
+    }
+
+    static func formatVolume(_ value: Double) -> String {
+        let formatted = value.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", value)
+            : String(format: "%.1f", value)
+        return "\(formatted) \(weightUnit.label)"
     }
 }

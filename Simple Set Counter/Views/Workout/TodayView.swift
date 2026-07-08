@@ -13,13 +13,16 @@ struct TodayView: View {
     private var activeSessions: [WorkoutSession]
     @Query(sort: \ExerciseTag.sortOrder) private var tags: [ExerciseTag]
 
-    @AppStorage(AppSettings.accentColorKey) private var accentColorRaw = AccentColorOption.orange.rawValue
-    @AppStorage(AppSettings.guidedWorkoutFlowKey) private var guidedWorkoutFlow = true
+    @AppStorage(AppSettings.accentColorKey) private var accentColorRaw = AccentColorOption.lime.rawValue
+    @AppStorage(AppSettings.guidedWorkoutFlowKey) private var guidedWorkoutFlow = false
     @State private var showSettings = false
     @State private var showRoutineEditor = false
     @State private var showAddExercise = false
     @State private var addingExercise: Exercise?
     @State private var showFinishConfirm = false
+    @State private var restTimerEndsAt: Date?
+    @State private var restTimerTotalDuration: TimeInterval = 90
+    @State private var workoutSummary: WorkoutSummaryData?
 
     private var activeSession: WorkoutSession? { activeSessions.first }
     private var displayTags: [ExerciseTag] {
@@ -35,49 +38,8 @@ struct TodayView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 16) {
-                    headerCard
-
-                    if guidedWorkoutFlow,
-                       let session = activeSession,
-                       let current = WorkoutFlow.currentExercise(in: session, tags: tags) {
-                        nowCard(session: session, exercise: current)
-                    }
-
-                    if routineExerciseCount == 0 {
-                        emptyRoutineCard
-                    } else {
-                        ForEach(displayTags) { tag in
-                            if !tag.visibleExercises.isEmpty {
-                                TodayTagSection(
-                                    tag: tag,
-                                    session: activeSession,
-                                    isActiveTag: guidedWorkoutFlow
-                                        && activeSession.flatMap { WorkoutFlow.activeTagID(in: $0) } == tag.id,
-                                    simpleMode: !guidedWorkoutFlow
-                                ) { exercise in
-                                    ExerciseSetBlock(
-                                        exercise: exercise,
-                                        session: activeSession,
-                                        onAddSet: { beginAddingSet(for: exercise, in: tag) },
-                                        onSelect: guidedWorkoutFlow ? { startExercise(exercise, in: tag) } : nil
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Button {
-                        showAddExercise = true
-                    } label: {
-                        Label("Add Exercise", systemImage: "plus.circle.fill")
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(AppTheme.card)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                    }
-                }
-                .padding(20)
+                todayScrollContent
+                    .padding(20)
             }
             .background(AppTheme.background)
             .foregroundStyle(.white)
@@ -115,8 +77,12 @@ struct TodayView: View {
                     exercise: exercise,
                     session: sessionForLogging(),
                     suggestedWeight: suggestedWeight(for: exercise),
-                    suggestedReps: suggestedReps(for: exercise)
+                    suggestedReps: suggestedReps(for: exercise),
+                    onSetSaved: handleSetSaved
                 )
+            }
+            .sheet(item: $workoutSummary) { summary in
+                WorkoutSummarySheet(summary: summary)
             }
             .alert("Finish this workout?", isPresented: $showFinishConfirm) {
                 Button("Finish") { finishWorkout() }
@@ -131,6 +97,82 @@ struct TodayView: View {
                     RoutineCatalog.normalizeMembershipSortOrders(for: tag, context: modelContext)
                 }
             }
+            .onChange(of: guidedWorkoutFlow) { _, enabled in
+                if !enabled { clearRestTimer() }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var todayScrollContent: some View {
+        VStack(spacing: 16) {
+            headerCard
+            guidedWorkoutSections
+            routineListSection
+            addExerciseButton
+        }
+    }
+
+    @ViewBuilder
+    private var guidedWorkoutSections: some View {
+        if guidedWorkoutFlow, let endsAt = restTimerEndsAt {
+            RestTimerBanner(
+                endsAt: endsAt,
+                totalDuration: restTimerTotalDuration,
+                onSkip: clearRestTimer,
+                onAddTime: { addRestTime(15) },
+                onComplete: completeRestTimer
+            )
+        }
+
+        if guidedWorkoutFlow,
+           let session = activeSession,
+           let current = WorkoutFlow.currentExercise(in: session, tags: tags) {
+            nowCard(session: session, exercise: current)
+        }
+    }
+
+    @ViewBuilder
+    private var routineListSection: some View {
+        if routineExerciseCount == 0 {
+            emptyRoutineCard
+        } else {
+            ForEach(displayTags) { tag in
+                if !tag.visibleExercises.isEmpty {
+                    tagSection(for: tag)
+                }
+            }
+        }
+    }
+
+    private var addExerciseButton: some View {
+        Button {
+            showAddExercise = true
+        } label: {
+            Label("Add Exercise", systemImage: "plus.circle.fill")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(AppTheme.card)
+                .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    private func tagSection(for tag: ExerciseTag) -> some View {
+        let isActive = guidedWorkoutFlow
+            && activeSession.flatMap { WorkoutFlow.activeTagID(in: $0) } == tag.id
+
+        return TodayTagSection(
+            tag: tag,
+            session: activeSession,
+            isActiveTag: isActive,
+            simpleMode: !guidedWorkoutFlow
+        ) { exercise in
+            ExerciseSetBlock(
+                exercise: exercise,
+                session: activeSession,
+                onAddSet: { beginAddingSet(for: exercise, in: tag) },
+                onSelect: guidedWorkoutFlow ? { startExercise(exercise, in: tag) } : nil
+            )
         }
     }
 
@@ -210,6 +252,7 @@ struct TodayView: View {
 
                 if queueCount > 1 {
                     Button {
+                        clearRestTimer()
                         WorkoutFlow.advanceToNext(in: session, tags: tags, context: modelContext)
                     } label: {
                         Text("Next")
@@ -225,6 +268,7 @@ struct TodayView: View {
 
             if queueCount > 1 {
                 Button {
+                    clearRestTimer()
                     WorkoutFlow.skipCurrentToBack(in: session, context: modelContext)
                 } label: {
                     Text("Skip to back")
@@ -379,10 +423,40 @@ struct TodayView: View {
 
     private func finishWorkout() {
         guard let session = activeSession else { return }
+        clearRestTimer()
         AppSettings.applySmartIncrease(after: session)
         WorkoutFlow.clearFlow(in: session)
         session.endedAt = .now
         try? modelContext.save()
+        workoutSummary = WorkoutSummaryBuilder.build(from: session)
+    }
+
+    private func handleSetSaved() {
+        guard guidedWorkoutFlow, AppSettings.restTimerEnabled else { return }
+        startRestTimer()
+    }
+
+    private func startRestTimer() {
+        let duration = TimeInterval(AppSettings.restTimerDuration)
+        restTimerTotalDuration = duration
+        restTimerEndsAt = Date().addingTimeInterval(duration)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private func clearRestTimer() {
+        restTimerEndsAt = nil
+    }
+
+    private func addRestTime(_ seconds: TimeInterval) {
+        guard let endsAt = restTimerEndsAt else { return }
+        restTimerEndsAt = endsAt.addingTimeInterval(seconds)
+        restTimerTotalDuration += seconds
+    }
+
+    private func completeRestTimer() {
+        guard restTimerEndsAt != nil else { return }
+        clearRestTimer()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func deleteSet(_ set: LoggedSet) {

@@ -14,20 +14,30 @@ struct AddSetSheet: View {
     let session: WorkoutSession
     let suggestedWeight: Double
     let suggestedReps: Int
+    var onSetSaved: (() -> Void)? = nil
 
     @State private var weight: Double
     @State private var reps: Int
     @State private var isBodyweight: Bool
 
-    init(exercise: Exercise, session: WorkoutSession, suggestedWeight: Double, suggestedReps: Int) {
+    init(
+        exercise: Exercise,
+        session: WorkoutSession,
+        suggestedWeight: Double,
+        suggestedReps: Int,
+        onSetSaved: (() -> Void)? = nil
+    ) {
         self.exercise = exercise
         self.session = session
         self.suggestedWeight = suggestedWeight
         self.suggestedReps = suggestedReps
+        self.onSetSaved = onSetSaved
         _weight = State(initialValue: suggestedWeight)
         _reps = State(initialValue: max(1, suggestedReps))
-        _isBodyweight = State(initialValue: exercise.name == "Pull-Up" && suggestedWeight == 0)
+        _isBodyweight = State(initialValue: Self.defaultBodyweightNames.contains(exercise.name) && suggestedWeight == 0)
     }
+
+    private static let defaultBodyweightNames: Set<String> = ["Pull-Up", "Chin-Up", "Push-Up", "Dips"]
 
     var body: some View {
         NavigationStack {
@@ -83,6 +93,7 @@ struct AddSetSheet: View {
         modelContext.insert(set)
         session.sets.append(set)
         try? modelContext.save()
+        onSetSaved?()
     }
 }
 

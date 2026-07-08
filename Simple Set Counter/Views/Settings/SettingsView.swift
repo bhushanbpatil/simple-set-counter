@@ -13,16 +13,26 @@ struct SettingsView: View {
     @Query(filter: #Predicate<WorkoutSession> { $0.endedAt == nil })
     private var activeSessions: [WorkoutSession]
 
-    @AppStorage(AppSettings.accentColorKey) private var accentColorRaw = AccentColorOption.orange.rawValue
-    @AppStorage(AppSettings.guidedWorkoutFlowKey) private var guidedWorkoutFlow = true
+    @AppStorage(AppSettings.accentColorKey) private var accentColorRaw = AccentColorOption.lime.rawValue
+    @AppStorage(AppSettings.guidedWorkoutFlowKey) private var guidedWorkoutFlow = false
+    @AppStorage(AppSettings.restTimerEnabledKey) private var restTimerEnabled = true
+    @AppStorage(AppSettings.restTimerDurationKey) private var restTimerDuration = RestTimerDuration.s90.rawValue
+    @AppStorage(AppSettings.hasCompletedOnboardingKey) private var hasCompletedOnboarding = true
     @State private var unit = AppSettings.weightUnit
     @State private var step = AppSettings.weightStep
     @State private var smartIncrease = AppSettings.smartIncreaseEnabled
 
     private var accentColor: Binding<AccentColorOption> {
         Binding(
-            get: { AccentColorOption(rawValue: accentColorRaw) ?? .orange },
+            get: { AccentColorOption(rawValue: accentColorRaw) ?? .lime },
             set: { accentColorRaw = $0.rawValue }
+        )
+    }
+
+    private var restDuration: Binding<RestTimerDuration> {
+        Binding(
+            get: { RestTimerDuration(rawValue: restTimerDuration) ?? .s90 },
+            set: { restTimerDuration = $0.rawValue }
         )
     }
 
@@ -78,6 +88,22 @@ struct SettingsView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
 
+                if guidedWorkoutFlow {
+                    Toggle("Rest timer", isOn: $restTimerEnabled)
+
+                    if restTimerEnabled {
+                        Picker("Rest duration", selection: restDuration) {
+                            ForEach(RestTimerDuration.allCases) { option in
+                                Text(option.title).tag(option)
+                            }
+                        }
+                    }
+
+                    Text("Starts automatically after each logged set in guided mode.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
                 Toggle("Smart increase", isOn: $smartIncrease)
                     .onChange(of: smartIncrease) { _, newValue in
                         AppSettings.smartIncreaseEnabled = newValue
@@ -92,6 +118,15 @@ struct SettingsView: View {
                 Text("All workouts stay on this device. No account. No cloud sync.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+
+                if let url = URL(string: AppSettings.privacyPolicyURL) {
+                    Link("Privacy Policy", destination: url)
+                }
+
+                Button("Show tutorial again") {
+                    hasCompletedOnboarding = false
+                    dismiss()
+                }
             }
 
             Section("About") {

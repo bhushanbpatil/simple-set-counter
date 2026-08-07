@@ -14,6 +14,7 @@ struct AddSetSheet: View {
     let session: WorkoutSession
     let suggestedWeight: Double
     let suggestedReps: Int
+    let suggestedIsBodyweight: Bool
     var onSetSaved: (() -> Void)? = nil
 
     @State private var weight: Double
@@ -25,19 +26,19 @@ struct AddSetSheet: View {
         session: WorkoutSession,
         suggestedWeight: Double,
         suggestedReps: Int,
+        suggestedIsBodyweight: Bool = false,
         onSetSaved: (() -> Void)? = nil
     ) {
         self.exercise = exercise
         self.session = session
         self.suggestedWeight = suggestedWeight
         self.suggestedReps = suggestedReps
+        self.suggestedIsBodyweight = suggestedIsBodyweight
         self.onSetSaved = onSetSaved
         _weight = State(initialValue: suggestedWeight)
         _reps = State(initialValue: max(1, suggestedReps))
-        _isBodyweight = State(initialValue: Self.defaultBodyweightNames.contains(exercise.name) && suggestedWeight == 0)
+        _isBodyweight = State(initialValue: suggestedIsBodyweight)
     }
-
-    private static let defaultBodyweightNames: Set<String> = ["Pull-Up", "Chin-Up", "Push-Up", "Dips"]
 
     var body: some View {
         NavigationStack {
@@ -92,6 +93,9 @@ struct AddSetSheet: View {
         )
         modelContext.insert(set)
         session.sets.append(set)
+        if isBodyweight {
+            AppSettings.clearSmartIncreaseSuggestion(for: exercise.id)
+        }
         try? modelContext.save()
         onSetSaved?()
     }

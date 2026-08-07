@@ -93,6 +93,7 @@ struct TodayView: View {
                     session: sessionForLogging(),
                     suggestedWeight: suggestedWeight(for: exercise),
                     suggestedReps: suggestedReps(for: exercise),
+                    suggestedIsBodyweight: suggestedIsBodyweight(for: exercise),
                     onSetSaved: handleSetSaved
                 )
             }
@@ -435,32 +436,37 @@ struct TodayView: View {
         return session
     }
 
-    private func suggestedWeight(for exercise: Exercise) -> Double {
+    private func nextSuggestion(for exercise: Exercise) -> ProgressCalculator.NextSetSuggestion? {
         let session = activeSession ?? sessionForLogging()
-        if let last = session.sortedSets.filter({ $0.exercise?.id == exercise.id }).last, !last.isBodyweight {
-            return last.weight
+        if let last = session.sortedSets.filter({ $0.exercise?.id == exercise.id }).last {
+            return ProgressCalculator.NextSetSuggestion(
+                weight: (last.isBodyweight || last.weight <= 0) ? 0 : last.weight,
+                reps: last.reps,
+                isBodyweight: last.isBodyweight || last.weight <= 0,
+                isSmartIncrease: false
+            )
         }
-        if let suggestion = AppSettings.smartIncreaseSuggestion(for: exercise.id) {
-            return suggestion.weight
-        }
-        if let last = ProgressCalculator.fetchLastSet(for: exercise, before: session, context: modelContext), !last.isBodyweight {
-            return last.weight
-        }
-        return 0
+        return ProgressCalculator.nextSetSuggestion(
+            for: exercise,
+            before: session,
+            context: modelContext
+        )
+    }
+
+    private func suggestedWeight(for exercise: Exercise) -> Double {
+        nextSuggestion(for: exercise)?.weight ?? 0
     }
 
     private func suggestedReps(for exercise: Exercise) -> Int {
-        let session = activeSession ?? sessionForLogging()
-        if let last = session.sortedSets.filter({ $0.exercise?.id == exercise.id }).last {
-            return last.reps
+        nextSuggestion(for: exercise)?.reps ?? 8
+    }
+
+    private func suggestedIsBodyweight(for exercise: Exercise) -> Bool {
+        if let suggestion = nextSuggestion(for: exercise) {
+            return suggestion.isBodyweight
         }
-        if let suggestion = AppSettings.smartIncreaseSuggestion(for: exercise.id) {
-            return suggestion.reps
-        }
-        if let last = ProgressCalculator.fetchLastSet(for: exercise, before: session, context: modelContext) {
-            return last.reps
-        }
-        return 8
+        let defaults: Set<String> = ["Pull-Up", "Chin-Up", "Push-Up", "Dips"]
+        return defaults.contains(exercise.name)
     }
 
     private func finishWorkout() {

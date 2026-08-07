@@ -196,6 +196,16 @@ enum AppSettings {
         UserDefaults.standard.set(repsMap, forKey: smartIncreaseRepsKey)
     }
 
+    static func clearSmartIncreaseSuggestion(for exerciseID: UUID) {
+        let key = exerciseID.uuidString
+        var weights = UserDefaults.standard.dictionary(forKey: smartIncreaseWeightsKey) as? [String: Double] ?? [:]
+        var repsMap = UserDefaults.standard.dictionary(forKey: smartIncreaseRepsKey) as? [String: Int] ?? [:]
+        weights.removeValue(forKey: key)
+        repsMap.removeValue(forKey: key)
+        UserDefaults.standard.set(weights, forKey: smartIncreaseWeightsKey)
+        UserDefaults.standard.set(repsMap, forKey: smartIncreaseRepsKey)
+    }
+
     static func applySmartIncrease(after session: WorkoutSession) {
         guard smartIncreaseEnabled else { return }
 
@@ -203,17 +213,28 @@ enum AppSettings {
         for (exerciseID, sets) in grouped {
             guard let exerciseID else { continue }
 
-            let qualifying = sets.filter { !$0.isBodyweight && $0.reps > smartIncreaseRepThreshold }
-            guard let best = qualifying.max(by: { lhs, rhs in
+            // Use the heaviest set you actually lifted (e.g. 75 after moving up from 50),
+            // not a lighter warm-up / too-easy set that happened to have high reps.
+            let working = sets.filter { !$0.isBodyweight && $0.weight > 0 }
+            guard let best = working.max(by: { lhs, rhs in
                 if lhs.weight != rhs.weight { return lhs.weight < rhs.weight }
-                return lhs.reps < rhs.reps
-            }) else { continue }
+                if lhs.reps != rhs.reps { return lhs.reps < rhs.reps }
+                return lhs.completedAt < rhs.completedAt
+            }) else {
+                clearSmartIncreaseSuggestion(for: exerciseID)
+                continue
+            }
 
-            setSmartIncreaseSuggestion(
-                for: exerciseID,
-                weight: best.weight + smartIncreaseIncrement,
-                reps: best.reps
-            )
+            if best.reps > smartIncreaseRepThreshold {
+                setSmartIncreaseSuggestion(
+                    for: exerciseID,
+                    weight: best.weight + smartIncreaseIncrement,
+                    reps: best.reps
+                )
+            } else {
+                // Keep next workout at the working weight × reps via history, not a stale bump.
+                clearSmartIncreaseSuggestion(for: exerciseID)
+            }
         }
     }
 

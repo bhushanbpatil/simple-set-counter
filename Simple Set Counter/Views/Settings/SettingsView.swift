@@ -109,7 +109,7 @@ struct SettingsView: View {
                         AppSettings.smartIncreaseEnabled = newValue
                     }
 
-                Text("When any set has more than \(AppSettings.smartIncreaseRepThreshold) reps, the heaviest qualifying set plus \(AppSettings.formatWeight(AppSettings.smartIncreaseIncrement)) becomes next workout’s suggestion.")
+                Text("Uses your heaviest set from the workout. If that set has more than \(AppSettings.smartIncreaseRepThreshold) reps, next time suggests that weight plus \(AppSettings.formatWeight(AppSettings.smartIncreaseIncrement)).")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

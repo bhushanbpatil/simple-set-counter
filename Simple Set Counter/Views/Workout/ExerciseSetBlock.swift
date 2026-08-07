@@ -15,7 +15,7 @@ struct ExerciseSetBlock: View {
     var onSelect: (() -> Void)? = nil
     var highlightLogSetButton = false
 
-    @State private var priorSet: LoggedSet?
+    @State private var nextSuggestion: ProgressCalculator.NextSetSuggestion?
 
     private var sets: [LoggedSet] {
         guard let session else { return [] }
@@ -24,21 +24,16 @@ struct ExerciseSetBlock: View {
 
     private var weightLabel: String {
         if let current = sets.last {
-            return current.isBodyweight ? "BW × \(current.reps)" : "\(AppSettings.formatWeight(current.weight)) × \(current.reps)"
+            return current.isBodyweight || current.weight <= 0
+                ? "BW × \(current.reps)"
+                : "\(AppSettings.formatWeight(current.weight)) × \(current.reps)"
         }
-        if let suggestion = AppSettings.smartIncreaseSuggestion(for: exercise.id) {
-            return "\(AppSettings.formatWeight(suggestion.weight)) × \(suggestion.reps)"
-        }
-        if let last = priorSet {
-            return last.isBodyweight ? "BW × \(last.reps)" : "\(AppSettings.formatWeight(last.weight)) × \(last.reps)"
-        }
-        return "No sets yet"
+        return nextSuggestion?.label ?? "No sets yet"
     }
 
     private var weightCaption: String {
         if !sets.isEmpty { return "Current" }
-        if AppSettings.smartIncreaseSuggestion(for: exercise.id) != nil { return "Suggested" }
-        return "Last time"
+        return nextSuggestion?.caption ?? "Last time"
     }
 
     private var isPlaceholderWeight: Bool {
@@ -109,12 +104,16 @@ struct ExerciseSetBlock: View {
             onSelect?()
         }
         .task(id: refreshToken) {
-            priorSet = ProgressCalculator.fetchLastSet(for: exercise, before: session, context: modelContext)
+            nextSuggestion = ProgressCalculator.nextSetSuggestion(
+                for: exercise,
+                before: session,
+                context: modelContext
+            )
         }
     }
 
     private var refreshToken: String {
-        "\(exercise.id.uuidString)-\(session?.sets.count ?? 0)"
+        "\(exercise.id.uuidString)-\(session?.sets.count ?? 0)-\(AppSettings.smartIncreaseEnabled)"
     }
 
     private func duplicateSet(_ set: LoggedSet) {

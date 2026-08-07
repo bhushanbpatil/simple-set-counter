@@ -8,14 +8,34 @@ import SwiftData
 import Charts
 
 struct ProgressTabView: View {
-    @Query(sort: \Exercise.name) private var exercises: [Exercise]
     @Query(sort: \LoggedSet.completedAt) private var allSets: [LoggedSet]
 
     @State private var selectedExercise: Exercise?
     @State private var range: ProgressRange = .oneYear
 
-    private var visibleExercises: [Exercise] {
-        exercises.filter { !$0.isHidden }
+    /// Only exercises the user has actually logged sets for, newest activity first.
+    private var trackedExercises: [Exercise] {
+        let byID = Dictionary(grouping: allSets.compactMap(\.exercise), by: \.id)
+        let latestDate: [UUID: Date] = Dictionary(
+            uniqueKeysWithValues: byID.compactMap { id, exercises in
+                guard let exercise = exercises.first else { return nil }
+                let latest = allSets
+                    .filter { $0.exercise?.id == id }
+                    .map(\.completedAt)
+                    .max() ?? .distantPast
+                return (exercise.id, latest)
+            }
+        )
+
+        return byID.values
+            .compactMap(\.first)
+            .filter { !$0.isHidden }
+            .sorted { lhs, rhs in
+                let left = latestDate[lhs.id] ?? .distantPast
+                let right = latestDate[rhs.id] ?? .distantPast
+                if left != right { return left > right }
+                return lhs.name < rhs.name
+            }
     }
 
     private var exerciseSets: [LoggedSet] {
@@ -32,9 +52,13 @@ struct ProgressTabView: View {
             ZStack {
                 AppTheme.background.ignoresSafeArea()
 
-                if visibleExercises.isEmpty {
-                    ContentUnavailableView("No exercises", systemImage: "chart.line.uptrend.xyaxis")
-                        .foregroundStyle(.white)
+                if trackedExercises.isEmpty {
+                    ContentUnavailableView(
+                        "No tracked exercises yet",
+                        systemImage: "chart.line.uptrend.xyaxis",
+                        description: Text("Log sets on Today and they'll show up here.")
+                    )
+                    .foregroundStyle(.white)
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 20) {
@@ -50,9 +74,10 @@ struct ProgressTabView: View {
             .navigationTitle("Progress")
             .toolbarColorScheme(.dark, for: .navigationBar)
             .onAppear {
-                if selectedExercise == nil {
-                    selectedExercise = visibleExercises.first
-                }
+                syncSelection()
+            }
+            .onChange(of: trackedExercises.map(\.id)) { _, _ in
+                syncSelection()
             }
         }
         .foregroundStyle(.white)
@@ -64,7 +89,7 @@ struct ProgressTabView: View {
                 .font(.caption.bold())
                 .foregroundStyle(AppTheme.secondaryText)
             Picker("Exercise", selection: $selectedExercise) {
-                ForEach(visibleExercises) { exercise in
+                ForEach(trackedExercises) { exercise in
                     Text(exercise.name).tag(Optional(exercise))
                 }
             }
@@ -85,8 +110,9 @@ struct ProgressTabView: View {
     @ViewBuilder
     private var summaryCards: some View {
         let weightPoints = summary.points.filter { $0.maxWeight > 0 }
+        let volumePoints = summary.points.filter { $0.totalVolume > 0 }
 
-        if weightPoints.isEmpty {
+        if weightPoints.isEmpty && volumePoints.isEmpty {
             Text("Log weighted sets to see progress charts.")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.secondaryText)
@@ -94,17 +120,33 @@ struct ProgressTabView: View {
             VStack(spacing: 12) {
                 if let delta = summary.deltaWeight {
                     summaryCard(
-                        title: "Change",
+                        title: "Weight change",
                         value: formattedDelta(delta),
-                        subtitle: "over \(range.title)"
+                        subtitle: "max weight over \(range.title)"
                     )
                 }
-                if let latest = summary.latestMax {
+                if let delta = summary.deltaVolume {
                     summaryCard(
-                        title: "Best in range",
-                        value: AppSettings.formatWeight(latest),
-                        subtitle: "\(summary.workoutDays) workout days"
+                        title: "Volume change",
+                        value: formattedDelta(delta),
+                        subtitle: "total volume over \(range.title)"
                     )
+                }
+                HStack(spacing: 12) {
+                    if let latest = summary.latestMax {
+                        summaryCard(
+                            title: "Best weight",
+                            value: AppSettings.formatWeight(latest),
+                            subtitle: "\(summary.workoutDays) workout days"
+                        )
+                    }
+                    if let volume = summary.latestVolume {
+                        summaryCard(
+                            title: "Latest volume",
+                            value: AppSettings.formatVolume(volume),
+                            subtitle: "most recent day"
+                        )
+                    }
                 }
             }
         }
@@ -117,6 +159,8 @@ struct ProgressTabView: View {
                 .foregroundStyle(AppTheme.secondaryText)
             Text(value)
                 .font(.title2.bold())
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
             Text(subtitle)
                 .font(.caption)
                 .foregroundStyle(AppTheme.secondaryText)
@@ -130,31 +174,53 @@ struct ProgressTabView: View {
     @ViewBuilder
     private var chartSection: some View {
         let weightPoints = summary.points.filter { $0.maxWeight > 0 }
+        let volumePoints = summary.points.filter { $0.totalVolume > 0 }
 
         if weightPoints.count >= 2 {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Max weight")
-                    .font(.headline)
-
-                Chart(weightPoints) { point in
-                    LineMark(
-                        x: .value("Date", point.date),
-                        y: .value("Weight", point.maxWeight)
-                    )
-                    .foregroundStyle(AppTheme.accent)
-                    PointMark(
-                        x: .value("Date", point.date),
-                        y: .value("Weight", point.maxWeight)
-                    )
-                    .foregroundStyle(AppTheme.accent)
-                }
-                .chartYAxisLabel(AppSettings.weightUnit.label)
-                .frame(height: 220)
-                .padding(12)
-                .background(AppTheme.card)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-            }
+            chartCard(title: "Max weight", points: weightPoints, value: \.maxWeight, yLabel: AppSettings.weightUnit.label)
         }
+
+        if volumePoints.count >= 2 {
+            chartCard(title: "Total volume", points: volumePoints, value: \.totalVolume, yLabel: AppSettings.weightUnit.label)
+        }
+    }
+
+    private func chartCard(
+        title: String,
+        points: [ProgressDataPoint],
+        value: KeyPath<ProgressDataPoint, Double>,
+        yLabel: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+
+            Chart(points) { point in
+                LineMark(
+                    x: .value("Date", point.date),
+                    y: .value(title, point[keyPath: value])
+                )
+                .foregroundStyle(AppTheme.accent)
+                PointMark(
+                    x: .value("Date", point.date),
+                    y: .value(title, point[keyPath: value])
+                )
+                .foregroundStyle(AppTheme.accent)
+            }
+            .chartYAxisLabel(yLabel)
+            .frame(height: 220)
+            .padding(12)
+            .background(AppTheme.card)
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+    }
+
+    private func syncSelection() {
+        if let selected = selectedExercise,
+           trackedExercises.contains(where: { $0.id == selected.id }) {
+            return
+        }
+        selectedExercise = trackedExercises.first
     }
 
     private func formattedDelta(_ delta: Double) -> String {

@@ -130,7 +130,7 @@ struct SettingsView: View {
             }
 
             Section("About") {
-                LabeledContent("Version", value: "1.0")
+                LabeledContent("Version", value: "1.1")
             }
         }
         .navigationTitle("Settings")
